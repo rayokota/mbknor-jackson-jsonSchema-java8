@@ -773,6 +773,12 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 //                    optionsNode.put(_.name(), _.value());
 //                }
 
+                var additionalAnn = prop.getAnnotation(JsonSchemaAdditional.class);
+                if (additionalAnn != null) {
+                    var optionsNode = Utils.getOrCreateObjectChild(thisPropertyNode.meta, "options");
+                    optionsNode.put("additional", true);
+                }
+
                 // Optionally add JsonSchemaInject
                 var injectAnn = ctx.selectAnnotation(prop, JsonSchemaInject.class);
                 if (injectAnn == null) {
