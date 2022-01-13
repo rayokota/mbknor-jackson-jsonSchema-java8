@@ -469,11 +469,6 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
                 var thisOneOfNode = JsonNodeFactory.instance.objectNode();
                 thisOneOfNode.put("$ref", definitionInfo.ref());
              
-                // If class is annotated with JsonSchemaTitle, we should add it
-                var titleAnnotation = subType.getDeclaredAnnotation(JsonSchemaTitle.class);
-                if (titleAnnotation != null)
-                    thisOneOfNode.put("title", titleAnnotation.value());
-
                 anyOfArrayNode.add(thisOneOfNode);
             }
 
@@ -573,7 +568,11 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 
         var polyInfo = extractPolymorphismInfo(type);
         if (polyInfo != null) {
-            thisObjectNode.put("title", polyInfo.subTypeName);
+            if (!thisObjectNode.has("title")) {
+                var pathParts = polyInfo.subTypeName.split("\\.|\\$");
+                var simpleName = pathParts[pathParts.length - 1];
+                thisObjectNode.put("title", Utils.camelCaseToSentenceCase(simpleName));
+            }
             
             // must inject the 'type'-param and value as enum with only one possible value
             // This is done to make sure the json generated from the schema using this oneOf

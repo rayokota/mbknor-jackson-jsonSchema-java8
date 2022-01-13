@@ -126,11 +126,11 @@ public final class TestUtils {
         return schema;
     }
     
-    void assertJsonSubTypesInfo(JsonNode node, String typeParamName, String typeName) {
-        assertJsonSubTypesInfo(node, typeParamName, typeName, false);
+    void assertJsonSubTypesInfo(JsonNode node, String typeParamName, String typeName, String typeTitle) {
+        assertJsonSubTypesInfo(node, typeParamName, typeName, typeTitle, false);
     }
     
-    void assertJsonSubTypesInfo(JsonNode node, String typeParamName, String typeName, boolean html5Checks) {
+    void assertJsonSubTypesInfo(JsonNode node, String typeParamName, String typeName, String typeTitle, boolean html5Checks) {
         /*
         "properties" : {
           "type" : {
@@ -145,7 +145,7 @@ public final class TestUtils {
         assertEquals (node.at("/properties/" + typeParamName + "/type").asText(), "string");
         assertEquals (node.at("/properties/" + typeParamName + "/enum/0").asText(), typeName);
         assertEquals (node.at("/properties/" + typeParamName + "/default").asText(), typeName);
-        assertEquals (node.at("/title").asText(), typeName);
+        assertEquals (typeTitle, node.at("/title").asText());
         assertPropertyRequired(node, typeParamName, true);
 
         if (html5Checks) {

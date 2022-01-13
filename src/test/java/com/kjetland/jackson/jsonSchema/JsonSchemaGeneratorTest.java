@@ -147,7 +147,7 @@ public class JsonSchemaGeneratorTest {
 
         assertTrue (!schema.at("/additionalProperties").asBoolean());
         assertEquals (schema.at("/properties/parentString/type").asText(), "string");
-        assertJsonSubTypesInfo(schema, "type", "child1");
+        assertJsonSubTypesInfo(schema, "type", "child1", "Child 1");
     }
     
     @Test void generateSchemaForPropertyWithJsonTypeInfo() {
@@ -241,20 +241,20 @@ public class JsonSchemaGeneratorTest {
     };
     
     void assertChild1(JsonNode node, String path) {
-        assertChild1(node, path, "Child1", "type", "child1", false);
+        assertChild1(node, path, "Child1", "type", "child1", "Child 1", false);
     }
     void assertChild1(JsonNode node, String path, boolean html5Checks) {
-        assertChild1(node, path, "Child1", "type", "child1", html5Checks);
+        assertChild1(node, path, "Child1", "type", "child1", "Child 1", html5Checks);
     }
     void assertChild1(JsonNode node, String path, String defName) {
-        assertChild1(node, path, defName, "type", "child1", false);
+        assertChild1(node, path, defName, "type", "child1", "Child 1", false);
     }
-    void assertChild1(JsonNode node, String path, String defName, String typeParamName, String typeName) {
-        assertChild1(node, path, defName, typeParamName, typeName, false);
+    void assertChild1(JsonNode node, String path, String defName, String typeParamName, String typeName, String typeTitle) {
+        assertChild1(node, path, defName, typeParamName, typeName, typeTitle, false);
     }
-    void assertChild1(JsonNode node, String path, String defName, String typeParamName, String typeName, boolean html5Checks) {
+    void assertChild1(JsonNode node, String path, String defName, String typeParamName, String typeName, String typeTitle, boolean html5Checks) {
         var child1 = getNodeViaRefs(node, path, defName);
-        assertJsonSubTypesInfo(child1, typeParamName, typeName, html5Checks);
+        assertJsonSubTypesInfo(child1, typeParamName, typeName, typeTitle, html5Checks);
         assertEquals (child1.at("/properties/parentString/type").asText(), "string");
         assertEquals (child1.at("/properties/child1String/type").asText(), "string");
         assertEquals (child1.at("/properties/_child1String2/type").asText(), "string");
@@ -273,7 +273,7 @@ public class JsonSchemaGeneratorTest {
     }
     void assertNullableChild1(JsonNode node, String path, String defName, boolean html5Checks) {
         var child1 = getNodeViaRefs(node, path, defName);
-        assertJsonSubTypesInfo(child1, "type", "child1", html5Checks);
+        assertJsonSubTypesInfo(child1, "type", "child1", "Child 1", html5Checks);
         assertNullableType(child1, "/properties/parentString", "string");
         assertNullableType(child1, "/properties/child1String", "string");
         assertNullableType(child1, "/properties/_child1String2", "string");
@@ -282,20 +282,20 @@ public class JsonSchemaGeneratorTest {
     }
 
     void assertChild2(JsonNode node, String path) {
-        assertChild2(node, path, "Child2", "type", "child2", false);
+        assertChild2(node, path, "Child2", "type", "child2", "Child 2", false);
     }
     void assertChild2(JsonNode node, String path, boolean html5Checks) {
-        assertChild2(node, path, "Child2", "type", "child2", html5Checks);
+        assertChild2(node, path, "Child2", "type", "child2", "Child 2", html5Checks);
     }
     void assertChild2(JsonNode node, String path, String defName) {
-        assertChild2(node, path, defName, "type", "child2", false);
+        assertChild2(node, path, defName, "type", "child2", "Child 2", false);
     }
-    void assertChild2(JsonNode node, String path, String defName, String typeParamName, String typeName) {
-        assertChild2(node, path, defName, typeParamName, typeName, false);
+    void assertChild2(JsonNode node, String path, String defName, String typeParamName, String typeName, String typeTitle) {
+        assertChild2(node, path, defName, typeParamName, typeName, typeTitle, false);
     }
-    void assertChild2(JsonNode node, String path, String defName, String typeParamName, String typeName, boolean html5Checks) {
+    void assertChild2(JsonNode node, String path, String defName, String typeParamName, String typeName, String typeTitle, boolean html5Checks) {
         var child2 = getNodeViaRefs(node, path, defName);
-        assertJsonSubTypesInfo(child2, typeParamName, typeName, html5Checks);
+        assertJsonSubTypesInfo(child2, typeParamName, typeName, typeTitle, html5Checks);
         assertEquals (child2.at("/properties/parentString/type").asText(), "string");
         assertEquals (child2.at("/properties/child2int/type").asText(), "integer");
     }
@@ -311,7 +311,7 @@ public class JsonSchemaGeneratorTest {
     }
     void assertNullableChild2(JsonNode node, String path, String defName, boolean html5Checks) {
         var child2 = getNodeViaRefs(node, path, defName);
-        assertJsonSubTypesInfo(child2, "type", "child2", html5Checks);
+        assertJsonSubTypesInfo(child2, "type", "child2", "Child 2", html5Checks);
         assertNullableType(child2, "/properties/parentString", "string");
         assertNullableType(child2, "/properties/child2int", "integer");
     }
@@ -345,8 +345,8 @@ public class JsonSchemaGeneratorTest {
 
         var schema = generateAndValidateSchema(g, Parent2.class, jsonNode);
 
-        assertChild1(schema, "/oneOf", "Child21", "clazz", "com.kjetland.jackson.jsonSchema.testData.polymorphism2.Child21");
-        assertChild2(schema, "/oneOf", "Child22", "clazz", "com.kjetland.jackson.jsonSchema.testData.polymorphism2.Child22");
+        assertChild1(schema, "/oneOf", "Child21", "clazz", "com.kjetland.jackson.jsonSchema.testData.polymorphism2.Child21", "Child 21");
+        assertChild2(schema, "/oneOf", "Child22", "clazz", "com.kjetland.jackson.jsonSchema.testData.polymorphism2.Child22", "Child 22");
     }
 
     @Test void generateSchemaForSuperClassAnnotatedWithJsonTypeInfo_use_IdMINIMALCLASS() {
@@ -358,11 +358,11 @@ public class JsonSchemaGeneratorTest {
 
         var schema = generateAndValidateSchema(g, Parent5.class, jsonNode);
 
-        assertChild1(schema, "/oneOf", "Child51", "clazz", ".Child51");
-        assertChild2(schema, "/oneOf", "Child52", "clazz", ".Child52");
+        assertChild1(schema, "/oneOf", "Child51", "clazz", ".Child51", "Child 51");
+        assertChild2(schema, "/oneOf", "Child52", "clazz", ".Child52", "Child 52");
 
         var embeddedTypeName = objectMapper.valueToTree(new Parent5.Child51InnerClass()).get("clazz").asText();
-        assertChild1(schema, "/oneOf", "Child51InnerClass", "clazz", embeddedTypeName);
+        assertChild1(schema, "/oneOf", "Child51InnerClass", "clazz", embeddedTypeName, "Child 51 Inner Class");
     }
 
     @Test void generateSchemaForInterfaceAnnotatedWithJsonTypeInfo_use_IdMINIMALCLASS() {
@@ -374,8 +374,8 @@ public class JsonSchemaGeneratorTest {
 
         var schema = generateAndValidateSchema(g, Parent6.class, jsonNode);
 
-        assertChild1(schema, "/oneOf", "Child61", "clazz", ".Child61");
-        assertChild2(schema, "/oneOf", "Child62", "clazz", ".Child62");
+        assertChild1(schema, "/oneOf", "Child61", "clazz", ".Child61", "Child 61");
+        assertChild2(schema, "/oneOf", "Child62", "clazz", ".Child62", "Child 62");
     }
 
     @Test void generateSchemaForSuperClassAnnotatedWithJsonTypeInfo_include_AsEXISTINGPROPERTY() {
@@ -385,8 +385,8 @@ public class JsonSchemaGeneratorTest {
 
         var schema = generateAndValidateSchema(jsonSchemaGenerator, Parent3.class, jsonNode);
 
-        assertChild1(schema, "/oneOf", "Child31", "type", "child31");
-        assertChild2(schema, "/oneOf", "Child32", "type", "child32");
+        assertChild1(schema, "/oneOf", "Child31", "type", "child31", "Child 31");
+        assertChild2(schema, "/oneOf", "Child32", "type", "child32", "Child 32");
     }
 
     @Test void generateSchemaForSuperClassAnnotatedWithJsonTypeInfo_include_AsCUSTOM() {
@@ -397,8 +397,8 @@ public class JsonSchemaGeneratorTest {
         var schema1 = generateAndValidateSchema(jsonSchemaGenerator, Child41.class, jsonNode1);
         var schema2 = generateAndValidateSchema(jsonSchemaGenerator, Child42.class, jsonNode2);
 
-        assertJsonSubTypesInfo(schema1, "type", "Child41");
-        assertJsonSubTypesInfo(schema2, "type", "Child42");
+        assertJsonSubTypesInfo(schema1, "type", "Child41", "Child 41");
+        assertJsonSubTypesInfo(schema2, "type", "Child42", "Child 42");
     }
 
     @Test void generateSchemaForClassContainingGenericsWithSameBaseTypeButDifferentTypeArguments() {
@@ -508,7 +508,7 @@ public class JsonSchemaGeneratorTest {
 
         var child1 = getNodeViaRefs(schema, schema.at("/properties/child1"), "Child1");
 
-        assertJsonSubTypesInfo(child1, "type", "child1");
+        assertJsonSubTypesInfo(child1, "type", "child1", "Child 1");
         assertEquals (child1.at("/properties/parentString/type").asText(), "string");
         assertEquals (child1.at("/properties/child1String/type").asText(), "string");
         assertEquals (child1.at("/properties/_child1String2/type").asText(), "string");
@@ -527,7 +527,7 @@ public class JsonSchemaGeneratorTest {
 
         var child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1");
 
-        assertJsonSubTypesInfo(child1, "type", "child1");
+        assertJsonSubTypesInfo(child1, "type", "child1", "Child 1");
         assertNullableType(child1, "/properties/parentString", "string");
         assertNullableType(child1, "/properties/child1String", "string");
         assertNullableType(child1, "/properties/_child1String2", "string");
@@ -768,7 +768,7 @@ public class JsonSchemaGeneratorTest {
         var child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1");
         assertEquals (schema.at("/properties/child1/title").asText(), "Child 1");
 
-        assertJsonSubTypesInfo(child1, "type", "child1", true);
+        assertJsonSubTypesInfo(child1, "type", "child1", "Child 1", true);
         assertEquals (child1.at("/properties/parentString/type").asText(), "string");
         assertEquals (child1.at("/properties/child1String/type").asText(), "string");
         assertEquals (child1.at("/properties/_child1String2/type").asText(), "string");
@@ -790,7 +790,7 @@ public class JsonSchemaGeneratorTest {
         assertEquals (schema.at("/properties/child1/oneOf/0/title").asText(), "Not included");
         var child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1");
 
-        assertJsonSubTypesInfo(child1, "type", "child1", true);
+        assertJsonSubTypesInfo(child1, "type", "child1", "Child 1", true);
         assertNullableType(child1, "/properties/parentString", "string");
         assertNullableType(child1, "/properties/child1String", "string");
         assertNullableType(child1, "/properties/_child1String2", "string");
@@ -1221,7 +1221,7 @@ public class JsonSchemaGeneratorTest {
 
       assertTrue (!schema.at("/additionalProperties").asBoolean());
       assertEquals (schema.at("/properties/parentString/type").asText(), "string");
-      assertJsonSubTypesInfo(schema, "type", "child1");
+      assertJsonSubTypesInfo(schema, "type", "child1", "Child 1");
     }
 
     @Test void preventingPolymorphismWithClassTypeRemapping_arrays() {
