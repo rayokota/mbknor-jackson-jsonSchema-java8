@@ -646,10 +646,13 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
                 // Check if we should set this property as required. Primitive types MUST have a value, as does anything
                 // with a @JsonProperty that has "required" set to true. Lastly, various javax.validation annotations also
                 // make this required.
-                boolean requiredProperty = propertyType.getRawClass().isPrimitive() || jsonPropertyRequired || ctx.validationAnnotationRequired(prop);
-
                 boolean optionalType = Optional.class.isAssignableFrom(propertyType.getRawClass())
                         || propertyType.getRawClass().getName().equals("scala.Option");
+
+                boolean nullable = optionalType ||
+                    !propertyType.getRawClass().isPrimitive() &&
+                        (ctx.hasNullableAnnotation(prop) 
+                            || ctx.config.nullableByDefault && !ctx.hasNotNullAnnotation(prop));
 
                 PropertyNode thisPropertyNode;
                 {
@@ -661,8 +664,7 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
                         nextPropertyOrderIndex += 1;
                     }
 
-                    if (!requiredProperty && ((ctx.config.useOneOfForOption && optionalType) ||
-                      (ctx.config.useOneOfForNullables && !optionalType))) {
+                    if ((ctx.config.useOneOfForNullables && nullable) || (ctx.config.useOneOfForOption && optionalType)) {
                         // We support this type being null, insert a oneOf consisting of a sentinel "null" and the real type.
                         var oneOfArray = JsonNodeFactory.instance.arrayNode();
                         node.set("oneOf", oneOfArray);
@@ -712,7 +714,7 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
                 definitionsHandler.popworkInProgress();
 
                 // If this property is required, add it to our array of required properties.
-                if (requiredProperty)
+                if (jsonPropertyRequired)
                     Utils.getRequiredArrayNode(thisObjectNode).add(propertyName);
                 
                 if (prop == null)

@@ -219,9 +219,5 @@ public final class TestUtils {
 
         var valueType = node.at(path).at("/oneOf/1");
         assertEquals (valueType.at("/type").asText(), expectedType);
-
-        var pathParts = path.split("/");
-        var propName = pathParts[pathParts.length - 1];
-        assertFalse(getRequiredList(node).contains(propName));
     }
 }

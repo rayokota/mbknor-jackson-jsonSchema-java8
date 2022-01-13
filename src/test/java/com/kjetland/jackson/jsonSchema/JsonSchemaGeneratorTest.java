@@ -87,7 +87,7 @@ public class JsonSchemaGeneratorTest {
     JsonSchemaGenerator jsonSchemaGeneratorHTML5 = new JsonSchemaGenerator(objectMapper,
         JsonSchemaConfig.JSON_EDITOR);
     JsonSchemaGenerator jsonSchemaGeneratorHTML5Nullable = new JsonSchemaGenerator(objectMapper,
-        JsonSchemaConfig.JSON_EDITOR.toBuilder().useOneOfForNullables(true).build());
+        JsonSchemaConfig.JSON_EDITOR.toBuilder().useOneOfForNullables(true).nullableByDefault(true).build());
     JsonSchemaGenerator jsonSchemaGenerator_draft_06 = new JsonSchemaGenerator(objectMapper,
         JsonSchemaConfig.builder().jsonSchemaDraft(JsonSchemaDraft.DRAFT_06).build());
     JsonSchemaGenerator jsonSchemaGenerator_draft_07 = new JsonSchemaGenerator(objectMapper,
@@ -277,7 +277,7 @@ public class JsonSchemaGeneratorTest {
         assertNullableType(child1, "/properties/parentString", "string");
         assertNullableType(child1, "/properties/child1String", "string");
         assertNullableType(child1, "/properties/_child1String2", "string");
-        assertEquals (child1.at("/properties/_child1String3/type").asText(), "string");
+        assertNullableType(child1, "/properties/_child1String3", "string");
         assertPropertyRequired(child1, "_child1String3", true);
     }
 
@@ -445,22 +445,22 @@ public class JsonSchemaGeneratorTest {
         assertPropertyRequired(schema, "_integer", false); // Should allow null by default
 
         assertEquals (schema.at("/properties/_int/type").asText(), "integer");
-        assertTrue(isPropertyRequired(schema, "_int"));
+        assertFalse(isPropertyRequired(schema, "_int"));
 
         assertEquals (schema.at("/properties/_booleanObject/type").asText(), "boolean");
         assertPropertyRequired(schema, "_booleanObject", false); // Should allow null by default
 
         assertEquals (schema.at("/properties/_booleanPrimitive/type").asText(), "boolean");
-        assertPropertyRequired(schema, "_booleanPrimitive", true); // Must be required since it must have true or false - not null
+        assertFalse(isPropertyRequired(schema, "_booleanPrimitive"));
 
         assertEquals (schema.at("/properties/_booleanObjectWithNotNull/type").asText(), "boolean");
-        assertPropertyRequired(schema, "_booleanObjectWithNotNull", true);
+        assertFalse(isPropertyRequired(schema, "_booleanObjectWithNotNull"));
 
         assertEquals (schema.at("/properties/_doubleObject/type").asText(), "number");
-        assertPropertyRequired(schema, "_doubleObject", false); // Should allow null by default
+        assertFalse(isPropertyRequired(schema, "_doubleObject"));
 
         assertEquals (schema.at("/properties/_doublePrimitive/type").asText(), "number");
-        assertPropertyRequired(schema, "_doublePrimitive", true); // Must be required since it must have a value - not null
+        assertTrue(isPropertyRequired(schema, "_doublePrimitive"));
 
         assertEquals (schema.at("/properties/myEnum/type").asText(), "string");
         assertEquals (getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")), 
@@ -480,17 +480,9 @@ public class JsonSchemaGeneratorTest {
         // We're actually going to test this elsewhere, because if we set this to null here it'll break the "generateAndValidateSchema"
         // test. What's fun is that the type system will allow you to set the value as null, but the schema won't (because there's a @NotNull annotation on it).
         assertEquals (schema.at("/properties/_booleanObjectWithNotNull/type").asText(), "boolean");
-        assertPropertyRequired(schema, "_booleanObjectWithNotNull", true);
-
         assertEquals (schema.at("/properties/_int/type").asText(), "integer");
-        assertPropertyRequired(schema, "_int", true);
-
         assertEquals (schema.at("/properties/_booleanPrimitive/type").asText(), "boolean");
-        assertPropertyRequired(schema, "_booleanPrimitive", true);
-
         assertEquals (schema.at("/properties/_doublePrimitive/type").asText(), "number");
-        assertPropertyRequired(schema, "_doublePrimitive", true);
-
         assertNullableType(schema, "/properties/myEnum", "string");
         assertEquals (getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/oneOf/1/enum")), 
                 Stream.of(MyEnum.values()).map(Enum::name).toList());
@@ -531,7 +523,7 @@ public class JsonSchemaGeneratorTest {
         assertNullableType(child1, "/properties/parentString", "string");
         assertNullableType(child1, "/properties/child1String", "string");
         assertNullableType(child1, "/properties/_child1String2", "string");
-        assertEquals (child1.at("/properties/_child1String3/type").asText(), "string");
+        assertNullableType(child1, "/properties/_child1String3", "string");
 
         assertNullableType(schema, "/properties/optionalList", "array");
         assertEquals (schema.at("/properties/optionalList/oneOf/1/items/$ref").asText(), "#/definitions/ClassNotExtendingAnything");
@@ -795,8 +787,7 @@ public class JsonSchemaGeneratorTest {
         assertNullableType(child1, "/properties/child1String", "string");
         assertNullableType(child1, "/properties/_child1String2", "string");
 
-        // This is required as we have a @JsonProperty marking it as so.;
-        assertEquals (child1.at("/properties/_child1String3/type").asText(), "string");
+        assertNullableType(child1, "/properties/_child1String3", "string");
         assertPropertyRequired(child1, "_child1String3", true);
 
         assertNullableType(schema, "/properties/optionalList", "array");
@@ -861,58 +852,57 @@ public class JsonSchemaGeneratorTest {
         var jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.classUsingValidation);
         var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.classUsingValidation.getClass(), jsonNode);
 
-        verifyStringProperty(schema, "stringUsingNotNull", 1, null, null, true);
-        verifyStringProperty(schema, "stringUsingNotBlank", 1, null, "^.*\\S+.*$", true);
-        verifyStringProperty(schema, "stringUsingNotBlankAndNotNull", 1, null, "^.*\\S+.*$", true);
-        verifyStringProperty(schema, "stringUsingNotEmpty", 1, null, null, true);
-        verifyStringProperty(schema, "stringUsingSize", 1, 20, null, false);
-        verifyStringProperty(schema, "stringUsingSizeOnlyMin", 1, null, null, false);
-        verifyStringProperty(schema, "stringUsingSizeOnlyMax", null, 30, null, false);
-        verifyStringProperty(schema, "stringUsingPattern", null, null, "_stringUsingPatternA|_stringUsingPatternB", false);
-        verifyStringProperty(schema, "stringUsingPatternList", null, null, "^(?=^_stringUsing.*)(?=.*PatternList$).*$", false);
+        verifyStringProperty(schema, "stringUsingNotNull", 1, null, null);
+        verifyStringProperty(schema, "stringUsingNotBlank", 1, null, "^.*\\S+.*$");
+        verifyStringProperty(schema, "stringUsingNotBlankAndNotNull", 1, null, "^.*\\S+.*$");
+        verifyStringProperty(schema, "stringUsingNotEmpty", 1, null, null);
+        verifyStringProperty(schema, "stringUsingSize", 1, 20, null);
+        verifyStringProperty(schema, "stringUsingSizeOnlyMin", 1, null, null);
+        verifyStringProperty(schema, "stringUsingSizeOnlyMax", null, 30, null);
+        verifyStringProperty(schema, "stringUsingPattern", null, null, "_stringUsingPatternA|_stringUsingPatternB");
+        verifyStringProperty(schema, "stringUsingPatternList", null, null, "^(?=^_stringUsing.*)(?=.*PatternList$).*$");
 
-        verifyNumericProperty(schema, "intMin", 1, null, true);
-        verifyNumericProperty(schema, "intMax", null, 10, true);
-        verifyNumericProperty(schema, "doubleMin", 1, null, true);
-        verifyNumericProperty(schema, "doubleMax", null, 10, true);
-        verifyNumericDoubleProperty(schema, "decimalMin", 1.5, null, true);
-        verifyNumericDoubleProperty(schema, "decimalMax", null, 2.5, true);
+        verifyNumericProperty(schema, "intMin", 1, null);
+        verifyNumericProperty(schema, "intMax", null, 10);
+        verifyNumericProperty(schema, "doubleMin", 1, null);
+        verifyNumericProperty(schema, "doubleMax", null, 10);
+        verifyNumericDoubleProperty(schema, "decimalMin", 1.5, null);
+        verifyNumericDoubleProperty(schema, "decimalMax", null, 2.5);
         assertEquals (schema.at("/properties/email/format").asText(), "email");
 
-        verifyArrayProperty(schema, "notEmptyStringArray", 1, null, true);
+        verifyArrayProperty(schema, "notEmptyStringArray", 1, null);
 
-        verifyObjectProperty(schema, "notEmptyMap", "string", 1, null, true);
+        verifyObjectProperty(schema, "notEmptyMap", "string", 1, null);
     }
 
     @Test void validation2() {
         var jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.pojoUsingValidation);
         var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.pojoUsingValidation.getClass(), jsonNode);
 
-        verifyStringProperty(schema, "stringUsingNotNull", 1, null, null, true);
-        verifyStringProperty(schema, "stringUsingNotBlank", 1, null, "^.*\\S+.*$", true);
-        verifyStringProperty(schema, "stringUsingNotBlankAndNotNull", 1, null, "^.*\\S+.*$", true);
-        verifyStringProperty(schema, "stringUsingNotEmpty", 1, null, null, true);
-        verifyStringProperty(schema, "stringUsingSize", 1, 20, null, false);
-        verifyStringProperty(schema, "stringUsingSizeOnlyMin", 1, null, null, false);
-        verifyStringProperty(schema, "stringUsingSizeOnlyMax", null, 30, null, false);
-        verifyStringProperty(schema, "stringUsingPattern", null, null, "_stringUsingPatternA|_stringUsingPatternB", false);
-        verifyStringProperty(schema, "stringUsingPatternList", null, null, "^(?=^_stringUsing.*)(?=.*PatternList$).*$", false);
+        verifyStringProperty(schema, "stringUsingNotNull", 1, null, null);
+        verifyStringProperty(schema, "stringUsingNotBlank", 1, null, "^.*\\S+.*$");
+        verifyStringProperty(schema, "stringUsingNotBlankAndNotNull", 1, null, "^.*\\S+.*$");
+        verifyStringProperty(schema, "stringUsingNotEmpty", 1, null, null);
+        verifyStringProperty(schema, "stringUsingSize", 1, 20, null);
+        verifyStringProperty(schema, "stringUsingSizeOnlyMin", 1, null, null);
+        verifyStringProperty(schema, "stringUsingSizeOnlyMax", null, 30, null);
+        verifyStringProperty(schema, "stringUsingPattern", null, null, "_stringUsingPatternA|_stringUsingPatternB");
+        verifyStringProperty(schema, "stringUsingPatternList", null, null, "^(?=^_stringUsing.*)(?=.*PatternList$).*$");
 
-        verifyNumericProperty(schema, "intMin", 1, null, true);
-        verifyNumericProperty(schema, "intMax", null, 10, true);
-        verifyNumericProperty(schema, "doubleMin", 1, null, true);
-        verifyNumericProperty(schema, "doubleMax", null, 10, true);
-        verifyNumericDoubleProperty(schema, "decimalMin", 1.5, null, true);
-        verifyNumericDoubleProperty(schema, "decimalMax", null, 2.5, true);
+        verifyNumericProperty(schema, "intMin", 1, null);
+        verifyNumericProperty(schema, "intMax", null, 10);
+        verifyNumericProperty(schema, "doubleMin", 1, null);
+        verifyNumericProperty(schema, "doubleMax", null, 10);
+        verifyNumericDoubleProperty(schema, "decimalMin", 1.5, null);
+        verifyNumericDoubleProperty(schema, "decimalMax", null, 2.5);
 
-        verifyArrayProperty(schema, "notEmptyStringArray", 1, null, true);
-        verifyArrayProperty(schema, "notEmptyStringList", 1, null, true);
+        verifyArrayProperty(schema, "notEmptyStringArray", 1, null);
+        verifyArrayProperty(schema, "notEmptyStringList", 1, null);
 
-        verifyObjectProperty(schema, "notEmptyStringMap", "string", 1, null, true);
+        verifyObjectProperty(schema, "notEmptyStringMap", "string", 1, null);
     }
 
-    void verifyStringProperty(JsonNode schema, String propertyName, Integer minLength, Integer maxLength, 
-            String pattern, boolean required) {
+    void verifyStringProperty(JsonNode schema, String propertyName, Integer minLength, Integer maxLength, String pattern) {
         assertNumericPropertyValidation(schema, propertyName, "minLength", minLength);
         assertNumericPropertyValidation(schema, propertyName, "maxLength", maxLength);
 
@@ -921,33 +911,27 @@ public class JsonSchemaGeneratorTest {
             assertEquals (matchNode.asText(), pattern);
         else
             assertTrue (matchNode.isMissingNode());
-
-        assertPropertyRequired(schema, propertyName, required);
     }
 
-    void verifyNumericProperty(JsonNode schema, String propertyName, Integer minimum, Integer maximum, boolean required) {
+    void verifyNumericProperty(JsonNode schema, String propertyName, Integer minimum, Integer maximum) {
         assertNumericPropertyValidation(schema, propertyName, "minimum", minimum);
         assertNumericPropertyValidation(schema, propertyName, "maximum", maximum);
-        assertPropertyRequired(schema, propertyName, required);
     }
 
-    void verifyNumericDoubleProperty(JsonNode schema, String propertyName, Double minimum, Double maximum, boolean required) {
+    void verifyNumericDoubleProperty(JsonNode schema, String propertyName, Double minimum, Double maximum) {
         assertNumericDoublePropertyValidation(schema, propertyName, "minimum", minimum);
         assertNumericDoublePropertyValidation(schema, propertyName, "maximum", maximum);
-        assertPropertyRequired(schema, propertyName, required);
     }
 
-    void verifyArrayProperty(JsonNode schema, String propertyName, Integer minItems, Integer maxItems, boolean required) {
+    void verifyArrayProperty(JsonNode schema, String propertyName, Integer minItems, Integer maxItems) {
         assertNumericPropertyValidation(schema, propertyName, "minItems", minItems);
         assertNumericPropertyValidation(schema, propertyName, "maxItems", maxItems);
-        assertPropertyRequired(schema, propertyName, required);
     }
 
-    void verifyObjectProperty(JsonNode schema, String propertyName, String additionalPropertiesType, Integer minProperties, Integer maxProperties, boolean required) {
+    void verifyObjectProperty(JsonNode schema, String propertyName, String additionalPropertiesType, Integer minProperties, Integer maxProperties) {
         assertEquals (schema.at("/properties/"+propertyName+"/additionalProperties/type").asText(), additionalPropertiesType);
         assertNumericPropertyValidation(schema, propertyName, "minProperties", minProperties);
         assertNumericPropertyValidation(schema, propertyName, "maxProperties", maxProperties);
-        assertPropertyRequired(schema, propertyName, required);
     }
 
     void assertNumericPropertyValidation(JsonNode schema, String propertyName, String validationName, Integer value) {
@@ -1088,7 +1072,6 @@ public class JsonSchemaGeneratorTest {
     }
     
     void checkInjected(JsonNode schema, String propertyName, boolean included) {
-        assertPropertyRequired(schema, propertyName, included);
         assertNotEquals (schema.at("/properties/"+propertyName+"/injected").isMissingNode(), included);
     }
 
@@ -1140,7 +1123,6 @@ public class JsonSchemaGeneratorTest {
         assertTrue (exception.getMessage().contains("error: instance type (null) does not match any allowed primitive type (allowed: [\"boolean\"])"));
 
         assertEquals (schema.at("/properties/notNullBooleanObject/type").asText(), "boolean");
-        assertPropertyRequired(schema, "notNullBooleanObject", true);
     }
 
     @Test void usingSchemaInject() throws JsonMappingException {

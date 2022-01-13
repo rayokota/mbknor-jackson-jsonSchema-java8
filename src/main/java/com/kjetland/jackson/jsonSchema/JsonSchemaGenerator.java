@@ -146,12 +146,31 @@ public class JsonSchemaGenerator {
             return null;
         return ann;
     }
-    
-    // Checks to see if a javax.validation field that makes our field required is present.
-    boolean validationAnnotationRequired(BeanProperty prop) {
-        return selectAnnotation(prop, NotNull.class) != null
-                || selectAnnotation(prop, NotBlank.class) != null
-                || selectAnnotation(prop, NotEmpty.class) != null;
+
+    // Checks to see if a javax.validation field that makes our field nullable.
+    public boolean hasNullableAnnotation(BeanProperty prop)  {
+        var annotations = prop.getMember().getAllAnnotations();
+        for (var annotation : annotations.annotations()) {
+            var annotationType = annotation.annotationType().getSimpleName();
+            if (annotationType .equals ("Nullable"))
+                return true;
+        }
+        return false;
+    }
+
+    // Checks to see if a javax.validation field that makes our field not null.
+    public boolean hasNotNullAnnotation(BeanProperty prop)  {
+        var annotations = prop.getMember().getAllAnnotations();
+        for (var annotation : annotations.annotations()) {
+            var annotationType = annotation.annotationType().getSimpleName();
+            if (annotationType .equals ("NonNull")
+                    || annotationType .equals ("Nonnull")
+                    || annotationType .equals ("NotNull")
+                    || selectAnnotation(prop, NotBlank.class) != null
+                    || selectAnnotation(prop, NotEmpty.class) != null)
+                return true;
+        }
+        return false;
     }
 
     /** Verifies that the annotation is applicable based on the config.javaxValidationGroups. */
