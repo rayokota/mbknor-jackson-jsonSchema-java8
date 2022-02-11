@@ -16,12 +16,16 @@ import com.kjetland.jackson.jsonSchema.testData.polymorphism6.Child61;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 
@@ -123,31 +127,40 @@ public class TestData {
     PojoWithArrays pojoWithArrays = new PojoWithArrays(
         new int[] { 1,2,3 },
         new String[] { "a1", "a2", "a3" },
-        List.of("l1", "l2", "l3"),
-        List.of(child1, child2),
+        Collections.unmodifiableList( Arrays.asList("l1", "l2", "l3") ),
+        Collections.unmodifiableList( Arrays.asList(child1, child2) ),
         new Parent[] { child1, child2 },
-        List.of(classNotExtendingAnything, classNotExtendingAnything),
+        Collections.unmodifiableList( Arrays.asList(classNotExtendingAnything, classNotExtendingAnything) ),
         Arrays.asList(Arrays.asList("1","2"), Arrays.asList("3")),
-        Set.of(MyEnum.B)
+        Collections.unmodifiableSet( Stream.of(MyEnum.B).collect(Collectors.toSet()) )
     );
 
     PojoWithArraysNullable pojoWithArraysNullable = new PojoWithArraysNullable(
         new int[] { 1, 2, 3 },
         new String[] { "a1","a2","a3" },
-        List.of("l1", "l2", "l3"),
-        List.of(child1, child2),
+        Collections.unmodifiableList( Arrays.asList("l1", "l2", "l3") ),
+        Collections.unmodifiableList( Arrays.asList(child1, child2) ),
         new Parent[] { child1, child2 },
-        List.of(classNotExtendingAnything, classNotExtendingAnything),
+        Collections.unmodifiableList( Arrays.asList(classNotExtendingAnything, classNotExtendingAnything) ),
         Arrays.asList(Arrays.asList("1","2"), Arrays.asList("3")),
-        Set.of(MyEnum.B)
+        Collections.unmodifiableSet( Stream.of(MyEnum.B).collect(Collectors.toSet()) )
     );
 
-    RecursivePojo recursivePojo = new RecursivePojo("t1", List.of(new RecursivePojo("c1", null)));
+    RecursivePojo recursivePojo = new RecursivePojo("t1", Collections.unmodifiableList( Arrays.asList(new RecursivePojo("c1", null)) ));
 
     PojoUsingMaps pojoUsingMaps = new PojoUsingMaps(
-        Map.of("a", 1, "b", 2),
-        Map.of("x", "y", "z", "w"),
-        Map.of("1", child1, "2", child2)
+    	Stream.of(
+		  new AbstractMap.SimpleImmutableEntry<>("a", 1),    
+		  new AbstractMap.SimpleImmutableEntry<>("b", 2))
+		  .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
+		Stream.of(
+		  new AbstractMap.SimpleImmutableEntry<>("x", "y"),    
+		  new AbstractMap.SimpleImmutableEntry<>("z", "w"))
+		  .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
+		Stream.of(
+		  new AbstractMap.SimpleImmutableEntry<>("1", child1),    
+		  new AbstractMap.SimpleImmutableEntry<>("2", child2))
+		  .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
     );
 
     PojoUsingFormat pojoUsingFormat = new PojoUsingFormat("test@example.com", true, OffsetDateTime.now(), OffsetDateTime.now());
@@ -160,8 +173,11 @@ public class TestData {
         "_stringUsingNotBlank", 
         "_stringUsingNotBlankAndNotNull", 
         "_stringUsingNotEmpty", 
-        List.of("l1", "l2", "l3"), 
-        Map.of("mk1", "mv1", "mk2", "mv2"),
+        Collections.unmodifiableList( Arrays.asList("l1", "l2", "l3") ), 
+        Stream.of(
+      		  new AbstractMap.SimpleImmutableEntry<>("mk1", "mv1"),    
+      		  new AbstractMap.SimpleImmutableEntry<>("mk2", "mv2"))
+      		  .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
         "_stringUsingSize", 
         "_stringUsingSizeOnlyMin", 
         "_stringUsingSizeOnlyMax", 
@@ -181,8 +197,11 @@ public class TestData {
         "_stringUsingNotBlankAndNotNull", 
         "_stringUsingNotEmpty", 
         new String[] { "a1", "a2", "a3" }, 
-        List.of("l1", "l2", "l3"),
-        Map.of("mk1", "mv1", "mk2", "mv2"), 
+        Collections.unmodifiableList( Arrays.asList("l1", "l2", "l3") ),
+        Stream.of(
+    		  new AbstractMap.SimpleImmutableEntry<>("mk1", "mv1"),    
+    		  new AbstractMap.SimpleImmutableEntry<>("mk2", "mv2"))
+    		  .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
         "_stringUsingSize", 
         "_stringUsingSizeOnlyMin", 
         "_stringUsingSizeOnlyMax", 

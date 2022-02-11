@@ -6,9 +6,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.fge.jsonschema.core.report.ProcessingReport;
+import com.github.fge.jsonschema.main.JsonSchema;
 import com.github.fge.jsonschema.main.JsonSchemaFactory;
 import static java.lang.System.out;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,19 +42,19 @@ public final class TestUtils {
     // desiredType might be a class which o extends (polymorphism)
     @SneakyThrows
     JsonNode assertToFromJson(JsonSchemaGenerator g, Object o, Class<?> desiredType) {
-        var json = g.objectMapper.writeValueAsString(o);
+        String json = g.objectMapper.writeValueAsString(o);
         System.out.println("json: " + json);
-        var jsonNode = g.objectMapper.readTree(json);
-        var r = g.objectMapper.treeToValue(jsonNode, desiredType);
+        JsonNode jsonNode = g.objectMapper.readTree(json);
+        Object r = g.objectMapper.treeToValue(jsonNode, desiredType);
         assertEquals (o , r);
         return jsonNode;
     }
 
     @SneakyThrows
     void useSchema(JsonNode schema, @Nullable JsonNode json) {
-        var schemaValidator = JsonSchemaFactory.byDefault().getJsonSchema(schema);
+        JsonSchema schemaValidator = JsonSchemaFactory.byDefault().getJsonSchema(schema);
         if (json != null) {
-            var r = schemaValidator.validate(json);
+            ProcessingReport r = schemaValidator.validate(json);
             if (!r.isSuccess())
                 throw new Exception("json does not validate against schema: " + r);
         }
@@ -80,7 +83,7 @@ public final class TestUtils {
             Class<?> clazz, 
             @Nullable JsonNode jsonToTestAgainstSchema,
             JsonSchemaDraft jsonSchemaDraft) {
-      var schema = g.generateJsonSchema(clazz);
+      JsonNode schema = g.generateJsonSchema(clazz);
 
       out.println("--------------------------------------------");
       out.println(asPrettyJson(schema, g.objectMapper));
@@ -115,7 +118,7 @@ public final class TestUtils {
             @Nullable JsonNode jsonToTestAgainstSchema,
             JsonSchemaDraft jsonSchemaDraft) {
         
-        var schema = g.generateJsonSchema(javaType);
+        JsonNode schema = g.generateJsonSchema(javaType);
 
         out.println("--------------------------------------------");
         out.println(asPrettyJson(schema, g.objectMapper));
@@ -160,7 +163,7 @@ public final class TestUtils {
 
     List<String> getArrayNodeAsListOfStrings(JsonNode node) {
         if (node instanceof MissingNode)
-            return List.of();
+            return Collections.unmodifiableList( new ArrayList<String>() );
         else
             return StreamSupport.stream(node.spliterator(), false).map(JsonNode::asText).collect(Collectors.toList());
     }
@@ -183,14 +186,14 @@ public final class TestUtils {
     
     JsonNode getNodeViaRefs(JsonNode root, String pathToArrayOfRefs, String definitionName) {
       List<JsonNode> arrayItemNodes = new ArrayList<>();
-      var child = root.at(pathToArrayOfRefs);
+      JsonNode child = root.at(pathToArrayOfRefs);
       if (child instanceof ArrayNode)
-          for (var e : child)
+          for (JsonNode e : child)
               arrayItemNodes.add(e);
       else
           arrayItemNodes.add((ObjectNode)child);
       
-      var ref = arrayItemNodes.stream()
+      String ref = arrayItemNodes.stream()
               .map(a -> a.get("$ref").asText().substring(1))
               .filter(a -> a.endsWith("/"+definitionName+""))
               .findFirst().get();
@@ -199,30 +202,30 @@ public final class TestUtils {
     }
 
     ObjectNode getNodeViaRefs(JsonNode root, JsonNode nodeWithRef, String definitionName) {
-      var ref = nodeWithRef.at("/$ref").asText();
+      String ref = nodeWithRef.at("/$ref").asText();
       assertTrue (ref.endsWith("/"+definitionName+""));
       // use ref to look the node up
-      var fixedRef = ref.substring(1); // Removing starting #
+      String fixedRef = ref.substring(1); // Removing starting #
       return (ObjectNode) root.at(fixedRef);
     }
     
     <T> List<T> toList(Iterator<T> iterator) {
-        var list = new ArrayList<T>();
+        List<T> list = new ArrayList<T>();
         while (iterator.hasNext())
             list.add (iterator.next());
         return list;
     }
     
     void assertNullableType(JsonNode node, String path, String expectedType) {
-        var nullType = node.at(path).at("/oneOf/0");
+        JsonNode nullType = node.at(path).at("/oneOf/0");
         assertEquals (nullType.at("/type").asText(), "null");
         assertEquals (nullType.at("/title").asText(), "Not included");
 
-        var valueType = node.at(path).at("/oneOf/1");
+        JsonNode valueType = node.at(path).at("/oneOf/1");
         assertEquals (valueType.at("/type").asText(), expectedType);
 
-        var pathParts = path.split("/");
-        var propName = pathParts[pathParts.length - 1];
+        String[] pathParts = path.split("/");
+        String propName = pathParts[pathParts.length - 1];
         assertFalse(getRequiredList(node).contains(propName));
     }
 }

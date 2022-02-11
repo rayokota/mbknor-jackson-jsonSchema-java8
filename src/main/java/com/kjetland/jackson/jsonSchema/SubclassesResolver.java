@@ -42,10 +42,10 @@ public class SubclassesResolver {
         ClassGraph classGraph = new ClassGraph();
 
         if (packagesToScan != null)
-            classGraph.whitelistPackages(packagesToScan.toArray(String[]::new));
+            classGraph.whitelistPackages(packagesToScan.toArray(new String[0]));
 
         if (classesToScan != null)
-            classGraph.whitelistClasses(classesToScan.toArray(String[]::new));
+            classGraph.whitelistClasses(classesToScan.toArray(new String[0]));
 
         return classGraph;
     }

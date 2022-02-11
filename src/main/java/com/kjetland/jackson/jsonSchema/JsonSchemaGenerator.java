@@ -6,10 +6,18 @@ import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
 import com.fasterxml.jackson.databind.introspect.AnnotatedClassResolver;
 import com.fasterxml.jackson.databind.jsontype.TypeSerializer;
 import com.fasterxml.jackson.databind.node.*;
+import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaBool;
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaFormat;
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaInject;
+import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaInt;
+import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaString;
+
 import java.lang.annotation.Annotation;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
+
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
@@ -52,16 +60,16 @@ public class JsonSchemaGenerator {
     
     public JsonNode generateJsonSchema(Class<?> clazz, String title, String description) throws JsonMappingException {
 
-        var clazzToUse = tryToReMapType(clazz);
+        Class<?> clazzToUse = tryToReMapType(clazz);
 
-        var javaType = objectMapper.constructType(clazzToUse);
+        JavaType javaType = objectMapper.constructType(clazzToUse);
 
         return generateJsonSchema(javaType, title, description);
     }
 
     public JsonNode generateJsonSchema(JavaType javaType, String title, String description) throws JsonMappingException {
 
-        var rootNode = JsonNodeFactory.instance.objectNode();
+        ObjectNode rootNode = JsonNodeFactory.instance.objectNode();
 
         rootNode.put("$schema", config.jsonSchemaDraft.url);
 
@@ -76,13 +84,13 @@ public class JsonSchemaGenerator {
             rootNode.put("description", description);
 
 
-        var definitionsHandler = new DefinitionsHandler(config);
-        var rootVisitor = new JsonSchemaGeneratorVisitor(this, 0, rootNode, definitionsHandler, null);
+        DefinitionsHandler definitionsHandler = new DefinitionsHandler(config);
+        JsonSchemaGeneratorVisitor rootVisitor = new JsonSchemaGeneratorVisitor(this, 0, rootNode, definitionsHandler, null);
 
 
         objectMapper.acceptJsonFormatVisitor(javaType, rootVisitor);
 
-        var definitionsNode = definitionsHandler.getFinalDefinitionsNode();
+        ObjectNode definitionsNode = definitionsHandler.getFinalDefinitionsNode();
         if (definitionsNode != null)
             rootNode.set("definitions", definitionsNode);
 
@@ -111,22 +119,22 @@ public class JsonSchemaGenerator {
     }
 
     String  resolvePropertyFormat(JavaType type) {
-        var omConfig = objectMapper.getDeserializationConfig();
-        var annotatedClass = AnnotatedClassResolver.resolve(omConfig, type, omConfig);
-        var annotation = annotatedClass.getAnnotation(JsonSchemaFormat.class);
+        DeserializationConfig omConfig = objectMapper.getDeserializationConfig();
+        AnnotatedClass annotatedClass = AnnotatedClassResolver.resolve(omConfig, type, omConfig);
+        JsonSchemaFormat annotation = annotatedClass.getAnnotation(JsonSchemaFormat.class);
         if (annotation != null)
             return annotation.value();
         
-        var rawClassName = type.getRawClass().getName();
+        String rawClassName = type.getRawClass().getName();
         return config.customType2FormatMapping.get(rawClassName);
     }
 
     String resolvePropertyFormat(BeanProperty prop) {
-        var annotation = prop.getAnnotation(JsonSchemaFormat.class);
+        JsonSchemaFormat annotation = prop.getAnnotation(JsonSchemaFormat.class);
         if (annotation != null)
             return annotation.value();
         
-        var rawClassName = prop.getType().getRawClass().getName();
+        String rawClassName = prop.getType().getRawClass().getName();
         return config.customType2FormatMapping.get(rawClassName);
     }
     
@@ -134,14 +142,14 @@ public class JsonSchemaGenerator {
     <T extends Annotation> T selectAnnotation(BeanProperty prop, Class<T> annotationClass) {
         if (prop == null)
             return null;
-        var ann = prop.getAnnotation(annotationClass);
+       T ann = prop.getAnnotation(annotationClass);
         if (ann == null || !annotationIsApplicable(ann))
             return null;
         return ann;
     }
 
     <T extends Annotation> T selectAnnotation(AnnotatedClass annotatedClass, Class<T> annotationClass) {
-        var ann = annotatedClass.getAnnotation(annotationClass);
+        T ann = annotatedClass.getAnnotation(annotationClass);
         if (ann == null || !annotationIsApplicable(ann))
             return null;
         return ann;
@@ -156,15 +164,15 @@ public class JsonSchemaGenerator {
 
     /** Verifies that the annotation is applicable based on the config.javaxValidationGroups. */
     boolean annotationIsApplicable(Annotation annotation) {
-        var desiredGroups = config.javaxValidationGroups;
+        List<Class<?>> desiredGroups = config.javaxValidationGroups;
         if (desiredGroups == null || desiredGroups.isEmpty())
-            desiredGroups = List.of (Default.class);
+            desiredGroups = Collections.unmodifiableList( Arrays.asList(Default.class) );
 
-        var annotationGroups = Utils.extractGroupsFromAnnotation(annotation);
+        List<Class<?>> annotationGroups = Utils.extractGroupsFromAnnotation(annotation);
         if (annotationGroups.isEmpty())
-            annotationGroups = List.of (Default.class);
+            annotationGroups = Collections.unmodifiableList( Arrays.asList(Default.class) );
 
-        for (var group : annotationGroups)
+        for (Class<?> group : annotationGroups)
             if (desiredGroups.contains (group))
                 return true;
         return false;
@@ -193,8 +201,8 @@ public class JsonSchemaGenerator {
         
         // Apply the JSON supplier (may be a no-op)
         try {
-            var jsonSupplier = injectAnnotation.jsonSupplier().newInstance();
-            var jsonNode = jsonSupplier.get();
+            Supplier<JsonNode> jsonSupplier = injectAnnotation.jsonSupplier().newInstance();
+            JsonNode jsonNode = jsonSupplier.get();
             if (jsonNode != null)
                 Utils.merge (injectedNode, jsonNode);
         }
@@ -204,23 +212,23 @@ public class JsonSchemaGenerator {
         
         // Apply the JSON-supplier-via-lookup
         if (!injectAnnotation.jsonSupplierViaLookup().isEmpty()) {
-            var jsonSupplier = config.jsonSuppliers.get(injectAnnotation.jsonSupplierViaLookup());
+        	Supplier<JsonNode> jsonSupplier = config.jsonSuppliers.get(injectAnnotation.jsonSupplierViaLookup());
             if (jsonSupplier == null)
                 throw new JsonMappingException("@JsonSchemaInject(jsonSupplierLookup='"+injectAnnotation.jsonSupplierViaLookup()+"') does not exist in ctx.config.jsonSupplierLookup-map");
-            var jsonNode = jsonSupplier.get();
+            JsonNode jsonNode = jsonSupplier.get();
             if (jsonNode != null)
                 Utils.merge(injectedNode, jsonNode);
         }
         
         // 
-        for (var v : injectAnnotation.strings())
+        for (JsonSchemaString v : injectAnnotation.strings())
             Utils.visit(injectedNode, v.path(), (o, n) -> o.put(n, v.value()));
-        for (var v : injectAnnotation.ints())
+        for (JsonSchemaInt v : injectAnnotation.ints())
             Utils.visit(injectedNode, v.path(), (o, n) -> o.put(n, v.value()));
-        for (var v : injectAnnotation.bools())
+        for (JsonSchemaBool v : injectAnnotation.bools())
             Utils.visit(injectedNode, v.path(), (o, n) -> o.put(n, v.value()));
 
-        var injectOverridesAll = injectAnnotation.overrideAll();
+        boolean injectOverridesAll = injectAnnotation.overrideAll();
         if (injectOverridesAll) {
           // Since we're not merging, we must remove all content of thisObjectNode before injecting.
           // We cannot just "replace" it with injectJsonNode, since thisObjectNode already have been added to its parent

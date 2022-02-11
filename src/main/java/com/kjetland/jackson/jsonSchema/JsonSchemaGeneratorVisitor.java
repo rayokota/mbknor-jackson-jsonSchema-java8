@@ -3,13 +3,20 @@ package com.kjetland.jackson.jsonSchema;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.BeanProperty;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
 import com.fasterxml.jackson.databind.introspect.AnnotatedClassResolver;
 import com.fasterxml.jackson.databind.jsonFormatVisitors.*;
+import com.fasterxml.jackson.databind.jsontype.NamedType;
+import com.fasterxml.jackson.databind.jsontype.SubtypeResolver;
+import com.fasterxml.jackson.databind.jsontype.TypeIdResolver;
+import com.fasterxml.jackson.databind.jsontype.TypeSerializer;
 import com.fasterxml.jackson.databind.jsontype.impl.MinimalClassNameIdResolver;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -17,6 +24,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.kjetland.jackson.jsonSchema.DefinitionsHandler.DefinitionInfo;
 import com.kjetland.jackson.jsonSchema.annotations.*;
 import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -59,13 +69,13 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 //                        .map (JsonSchemaDefault::value));
         
         // Plain java
-        var jp = tryGetAnnotation(JsonProperty.class);
+        JsonProperty jp = tryGetAnnotation(JsonProperty.class);
         if (jp != null 
                 && jp.defaultValue() != null
                 && !jp.defaultValue().isEmpty()) // unfortunately, defaultValue is empty by default
             return jp.defaultValue();
         
-        var jsd = tryGetAnnotation(JsonSchemaDefault.class);
+        JsonSchemaDefault jsd = tryGetAnnotation(JsonSchemaDefault.class);
         if (jsd != null)
             return jsd.value();
         
@@ -94,8 +104,8 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
         public void enumTypes(Set<String> enums) {
             log.trace("JsonStringFormatVisitor-enum.enumTypes: {}", enums);
 
-            var enumValuesNode = JsonNodeFactory.instance.arrayNode();
-            for (var e : enums)
+            ArrayNode enumValuesNode = JsonNodeFactory.instance.arrayNode();
+            for (String e : enums)
                 enumValuesNode.add(e);
             node.set("enum", enumValuesNode);
         }
@@ -111,45 +121,45 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 
         node.put("type", "string");
 
-        var notBlankAnnotation = tryGetAnnotation(NotBlank.class);
+        NotBlank notBlankAnnotation = tryGetAnnotation(NotBlank.class);
         if (notBlankAnnotation != null)
             node.put("pattern", "^.*\\S+.*$");
 
-        var patternAnnotation = tryGetAnnotation(Pattern.class);
+        Pattern patternAnnotation = tryGetAnnotation(Pattern.class);
         if (patternAnnotation != null)
             node.put("pattern", patternAnnotation.regexp());
 
-        var patternListAnnotation = tryGetAnnotation(Pattern.List.class);
+        Pattern.List patternListAnnotation = tryGetAnnotation(Pattern.List.class);
         if (patternListAnnotation != null) {
             String pattern = "^";
-            for (var p : patternListAnnotation.value())
+            for (Pattern p : patternListAnnotation.value())
                 pattern += "(?=" + p.regexp() + ")";
             pattern += ".*$";
             node.put("pattern", pattern);
         }
 
-        var defaultValue = extractDefaultValue();
+        String defaultValue = extractDefaultValue();
         if (defaultValue != null)
             node.put("default", defaultValue);
 
         // Look for @JsonSchemaExamples
-        var examplesAnnotation = tryGetAnnotation(JsonSchemaExamples.class);
+        JsonSchemaExamples examplesAnnotation = tryGetAnnotation(JsonSchemaExamples.class);
         if (examplesAnnotation != null) {
-            var examples = JsonNodeFactory.instance.arrayNode();
-            for (var example : examplesAnnotation.value())
+            ArrayNode examples = JsonNodeFactory.instance.arrayNode();
+            for (String example : examplesAnnotation.value())
                 examples.add(example);
             node.set("examples", examples);
         }
 
         // Look for @Email
-        var emailAnnotation = tryGetAnnotation(Email.class);
+        Email emailAnnotation = tryGetAnnotation(Email.class);
         if (emailAnnotation != null)
             node.put("format", "email");
 
         // Look for a @Size annotation, which should have a set of min/max properties.
-        var minAndMaxLengthAnnotation = tryGetAnnotation(Size.class);
-        var notNullAnnotation = tryGetAnnotation(NotNull.class);
-        var notEmptyAnnotation = tryGetAnnotation(NotEmpty.class);
+        Size minAndMaxLengthAnnotation = tryGetAnnotation(Size.class);
+        NotNull notNullAnnotation = tryGetAnnotation(NotNull.class);
+        NotEmpty notEmptyAnnotation = tryGetAnnotation(NotEmpty.class);
         if (minAndMaxLengthAnnotation != null) {
             if (minAndMaxLengthAnnotation.min() != 0)
                 node.put("minLength", minAndMaxLengthAnnotation.min());
@@ -180,22 +190,22 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
                 node.put("format", ctx.config.defaultArrayFormat);
         }
 
-        var sizeAnnotation = tryGetAnnotation(Size.class);
+        Size sizeAnnotation = tryGetAnnotation(Size.class);
         if (sizeAnnotation != null) {
             node.put("minItems", sizeAnnotation.min());
             node.put("maxItems", sizeAnnotation.max());
         }
 
-        var notEmptyAnnotation = tryGetAnnotation(NotEmpty.class);
+        NotEmpty notEmptyAnnotation = tryGetAnnotation(NotEmpty.class);
         if (notEmptyAnnotation != null)
             node.put("minItems", 1);
 
-        var defaultValue = extractDefaultValue();
+        String defaultValue = extractDefaultValue();
         if (defaultValue != null)
             node.put("default", defaultValue);
 
 
-        var itemsNode = JsonNodeFactory.instance.objectNode();
+        ObjectNode itemsNode = JsonNodeFactory.instance.objectNode();
         node.set("items", itemsNode);
 
         // We get improved result while processing scala-collections by getting elementType this way
@@ -207,8 +217,8 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
             @Override 
             public void itemsFormat(JsonFormatVisitable handler, JavaType elementType) throws JsonMappingException  {
                 log.trace("expectArrayFormat - handler: $handler - elementType: {} - preferredElementType: {}", elementType, preferredElementType);
-                var type = ctx.tryToReMapType(preferredElementType);
-                var visitor = createChildVisitor(itemsNode, null);
+                JavaType type = ctx.tryToReMapType(preferredElementType);
+                JsonSchemaGeneratorVisitor visitor = createChildVisitor(itemsNode, null);
                 ctx.objectMapper.acceptJsonFormatVisitor(type, visitor);
             }
 
@@ -229,31 +239,31 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
         node.put("type", "number");
 
         // Look for @Min, @Max, @DecimalMin, @DecimalMax => minimum, maximum
-        var minAnnotation = tryGetAnnotation(Min.class);
+        Min minAnnotation = tryGetAnnotation(Min.class);
         if (minAnnotation != null)
             node.put("minimum", minAnnotation.value());
 
-        var maxAnnotation = tryGetAnnotation(Max.class);
+        Max maxAnnotation = tryGetAnnotation(Max.class);
         if (maxAnnotation != null)
             node.put("maximum", maxAnnotation.value());
 
-        var decimalMinAnnotation = tryGetAnnotation(DecimalMin.class);
+        DecimalMin decimalMinAnnotation = tryGetAnnotation(DecimalMin.class);
         if (decimalMinAnnotation != null)
             node.put("minimum", Double.valueOf(decimalMinAnnotation.value()));
 
-        var decimalMaxAnnotation = tryGetAnnotation(DecimalMax.class);
+        DecimalMax decimalMaxAnnotation = tryGetAnnotation(DecimalMax.class);
         if (decimalMaxAnnotation != null)
             node.put("maximum", Double.valueOf(decimalMaxAnnotation.value()));
 
-        var defaultValue = extractDefaultValue();
+        String defaultValue = extractDefaultValue();
         if (defaultValue != null)
             node.put("default", Double.valueOf(defaultValue));
 
         if (currentProperty != null) {
-            var examplesAnnotation = currentProperty.getAnnotation(JsonSchemaExamples.class);
+            JsonSchemaExamples examplesAnnotation = currentProperty.getAnnotation(JsonSchemaExamples.class);
             if (examplesAnnotation != null) {
                 ArrayNode examples = JsonNodeFactory.instance.arrayNode();
-                for (var example : examplesAnnotation.value()) {
+                for (String example : examplesAnnotation.value()) {
                     examples.add(example);
                 }
                 node.set("examples", examples);
@@ -277,23 +287,23 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 
         node.put("type", "integer");
 
-        var minAnnotation = tryGetAnnotation(Min.class);
+        Min minAnnotation = tryGetAnnotation(Min.class);
         if (minAnnotation != null)
             node.put("minimum", minAnnotation.value());
         
-        var maxAnnotation = tryGetAnnotation(Max.class);
+        Max maxAnnotation = tryGetAnnotation(Max.class);
         if (maxAnnotation != null)
             node.put("maximum", maxAnnotation.value());
 
-        var defaultValue = extractDefaultValue();
+        String defaultValue = extractDefaultValue();
         if (defaultValue != null)
             node.put("default", Integer.valueOf(defaultValue));
 
         if (currentProperty != null) {
-            var examplesAnnotation = currentProperty.getAnnotation(JsonSchemaExamples.class);
+            JsonSchemaExamples examplesAnnotation = currentProperty.getAnnotation(JsonSchemaExamples.class);
             if (examplesAnnotation != null) {
                 ArrayNode examples = JsonNodeFactory.instance.arrayNode();
-                for (var example : examplesAnnotation.value()) {
+                for (String example : examplesAnnotation.value()) {
                     examples.add(example);
                 }
                 node.set("examples", examples);
@@ -314,7 +324,7 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 
         node.put("type", "boolean");
 
-        var defaultValue = extractDefaultValue();
+        String defaultValue = extractDefaultValue();
         if (defaultValue != null)
             node.put("default", Boolean.valueOf(defaultValue));
 
@@ -331,17 +341,17 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
         node.put("type", "object");
 
         // If we're annotated with @NotEmpty, make sure we add a minItems of 1 to our schema here.
-        var notEmptyAnnotation = tryGetAnnotation(NotEmpty.class);
+        NotEmpty notEmptyAnnotation = tryGetAnnotation(NotEmpty.class);
         if (notEmptyAnnotation != null)
             node.put("minProperties", 1);
 
-        var defaultValue = extractDefaultValue();
+        String defaultValue = extractDefaultValue();
         if (defaultValue != null)
             node.put("default", defaultValue);
 
-        var additionalPropsObject = JsonNodeFactory.instance.objectNode();
+        ObjectNode additionalPropsObject = JsonNodeFactory.instance.objectNode();
         definitionsHandler.pushWorkInProgress();
-        var childVisitor = createChildVisitor(additionalPropsObject, null);
+        JsonSchemaGeneratorVisitor childVisitor = createChildVisitor(additionalPropsObject, null);
         ctx.objectMapper.acceptJsonFormatVisitor(ctx.tryToReMapType(type.getContentType()), childVisitor);
         definitionsHandler.popworkInProgress();
         node.set("additionalProperties", additionalPropsObject);
@@ -366,18 +376,18 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 
     private PolymorphismInfo extractPolymorphismInfo(JavaType type) throws JsonMappingException {
         
-        var baseType = Utils.getSuperClass(type);
+        JavaType baseType = Utils.getSuperClass(type);
         if (baseType == null)
             return null;
         
-        var serializer = ctx.getTypeSerializer(baseType);
+        TypeSerializer serializer = ctx.getTypeSerializer(baseType);
         if (serializer == null)
             return null;
         
-        var inclusionMethod = serializer.getTypeInclusion();
+        As inclusionMethod = serializer.getTypeInclusion();
         if (inclusionMethod == JsonTypeInfo.As.PROPERTY
                 || inclusionMethod == JsonTypeInfo.As.EXISTING_PROPERTY) {
-            var idResolver = serializer.getTypeIdResolver();
+            TypeIdResolver idResolver = serializer.getTypeIdResolver();
             assert idResolver != null;
             String id;
             if (idResolver instanceof MinimalClassNameIdResolver)
@@ -396,23 +406,23 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
     }
 
     private List<Class<?>> extractSubTypes(Class<?> type) {
-        var ac = AnnotatedClassResolver.resolveWithoutSuperTypes(
+        AnnotatedClass ac = AnnotatedClassResolver.resolveWithoutSuperTypes(
                 ctx.objectMapper.getDeserializationConfig(), 
                 type, 
                 ctx.objectMapper.getDeserializationConfig());
 
-        var jsonTypeInfo = ac.getAnnotation(JsonTypeInfo.class);
+        JsonTypeInfo jsonTypeInfo = ac.getAnnotation(JsonTypeInfo.class);
         if (jsonTypeInfo == null) {
-            return List.of();
+            return Collections.unmodifiableList( new ArrayList<Class<?>>() );
         }
 
         if (jsonTypeInfo.use() == JsonTypeInfo.Id.NAME) {
 
-            var subTypeAnn = type.getDeclaredAnnotation(JsonSubTypes.class);
+            JsonSubTypes subTypeAnn = type.getDeclaredAnnotation(JsonSubTypes.class);
 
             if (subTypeAnn == null) {
                 // We did not find it via @JsonSubTypes-annotation (Probably since it is using mixin's) => Must fallback to using collectAndResolveSubtypesByClass
-                var resolvedSubTypes 
+                Collection<NamedType> resolvedSubTypes 
                     = ctx.objectMapper.getSubtypeResolver()
                         .collectAndResolveSubtypesByClass(ctx.objectMapper.getDeserializationConfig(), ac);
                 
@@ -424,11 +434,11 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
             }
 
             
-            var subTypes = subTypeAnn.value();
+            Type[] subTypes = subTypeAnn.value();
             return Stream.of(subTypes)
                     .map(subType -> subType.value())
                     .flatMap(subType -> {
-                        var subSubTypes = extractSubTypes(subType);
+                        List<Class<?>> subSubTypes = extractSubTypes(subType);
                         if (!subSubTypes.isEmpty())
                             return subSubTypes.stream();
                         else
@@ -443,7 +453,7 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
     @Override 
     public JsonObjectFormatVisitor expectObjectFormat(JavaType type) throws JsonMappingException {
 
-        var defaultValue = extractDefaultValue();
+        String defaultValue = extractDefaultValue();
         if (defaultValue != null)
             node.put("default", defaultValue);
 
@@ -454,24 +464,24 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
             // We have subtypes
             //log.trace("polymorphism - subTypes: $subTypes")
 
-            var anyOfArrayNode = JsonNodeFactory.instance.arrayNode();
+            ArrayNode anyOfArrayNode = JsonNodeFactory.instance.arrayNode();
             node.set("oneOf", anyOfArrayNode);
 
-            for (var subType : subTypes) {
+            for (Class<?> subType : subTypes) {
                 log.trace("polymorphism - subType: $subType");
-                var definitionInfo = definitionsHandler.getOrCreateDefinition
+                DefinitionInfo definitionInfo = definitionsHandler.getOrCreateDefinition
                     (ctx.objectMapper.constructType(subType), 
                     (t, objectNode) -> {
-                        var childVisitor = createChildVisitor(objectNode, null);
+                        JsonSchemaGeneratorVisitor childVisitor = createChildVisitor(objectNode, null);
                         ctx.objectMapper.acceptJsonFormatVisitor(ctx.tryToReMapType(subType), childVisitor);
                         return null;
                     });
 
-                var thisOneOfNode = JsonNodeFactory.instance.objectNode();
+                ObjectNode thisOneOfNode = JsonNodeFactory.instance.objectNode();
                 thisOneOfNode.put("$ref", definitionInfo.ref());
              
                 // If class is annotated with JsonSchemaTitle, we should add it
-                var titleAnnotation = subType.getDeclaredAnnotation(JsonSchemaTitle.class);
+                JsonSchemaTitle titleAnnotation = subType.getDeclaredAnnotation(JsonSchemaTitle.class);
                 if (titleAnnotation != null)
                     thisOneOfNode.put("title", titleAnnotation.value());
 
@@ -504,19 +514,19 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
         thisObjectNode.put("type", "object");
         thisObjectNode.put("additionalProperties", !ctx.config.failOnUnknownProperties);
 
-        var ac = AnnotatedClassResolver.resolve(ctx.objectMapper.getDeserializationConfig(), type, ctx.objectMapper.getDeserializationConfig());
+        AnnotatedClass ac = AnnotatedClassResolver.resolve(ctx.objectMapper.getDeserializationConfig(), type, ctx.objectMapper.getDeserializationConfig());
         
         // If class is annotated with JsonSchemaFormat, we should add it
-        var format = ctx.resolvePropertyFormat(type);
+        String format = ctx.resolvePropertyFormat(type);
         if (format != null)
             thisObjectNode.put("format", format);
         
         // If class is annotated with JsonSchemaDescription, we should add it
-        var descriptionAnnotation = ac.getAnnotations().get(JsonSchemaDescription.class);
+        JsonSchemaDescription descriptionAnnotation = ac.getAnnotations().get(JsonSchemaDescription.class);
         if (descriptionAnnotation != null)
             thisObjectNode.put("description", descriptionAnnotation.value());
         else {
-            var descriptionAnnotation2 = ac.getAnnotations().get(JsonPropertyDescription.class);
+            JsonPropertyDescription descriptionAnnotation2 = ac.getAnnotations().get(JsonPropertyDescription.class);
             if (descriptionAnnotation2 != null)
                 thisObjectNode.put("description", descriptionAnnotation2.value());
         }
@@ -540,7 +550,7 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 //        if (description) thisObjectNode.put("description", description);
 
         // If class is annotated with JsonSchemaTitle, we should add it
-        var titleAnnotation = ac.getAnnotations().get(JsonSchemaTitle.class);
+        JsonSchemaTitle titleAnnotation = ac.getAnnotations().get(JsonSchemaTitle.class);
         if (titleAnnotation != null)
             thisObjectNode.put("title", titleAnnotation.value());
         
@@ -548,10 +558,10 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 //        ac.getAnnotations().get(JsonSchemaTitle.class) ?| thisObjectNode.put("title", _.value());
 
         // If class is annotated with JsonSchemaOptions, we should add it
-        var optionsAnnotation = ac.getAnnotations().get(JsonSchemaOptions.class);
+        JsonSchemaOptions optionsAnnotation = ac.getAnnotations().get(JsonSchemaOptions.class);
         if (optionsAnnotation != null) {
-            var optionsNode = Utils.getOptionsNode(thisObjectNode);
-            for (var item : optionsAnnotation.items())
+            ObjectNode optionsNode = Utils.getOptionsNode(thisObjectNode);
+            for (JsonSchemaOptions.Item item : optionsAnnotation.items())
                 optionsNode.put(item.name(), item.value());
         }
 
@@ -559,7 +569,7 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
         // Add JsonSchemaInject to top-level, if exists.
         // Possibly, it overrides further processing.
         boolean injectOverridesAll;
-        var injectAnnotation = ctx.selectAnnotation(ac, JsonSchemaInject.class);
+        JsonSchemaInject injectAnnotation = ctx.selectAnnotation(ac, JsonSchemaInject.class);
         if (injectAnnotation != null) {
             // Continue to render props if we merged injection
             injectOverridesAll = ctx.injectFromAnnotation(thisObjectNode, injectAnnotation);
@@ -570,26 +580,26 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
             return null;
         
 
-        var propertiesNode = Utils.getOrCreateObjectChild(thisObjectNode, "properties");
+        ObjectNode propertiesNode = Utils.getOrCreateObjectChild(thisObjectNode, "properties");
 
-        var polyInfo = extractPolymorphismInfo(type);
+        PolymorphismInfo polyInfo = extractPolymorphismInfo(type);
         if (polyInfo != null) {
             thisObjectNode.put("title", polyInfo.subTypeName);
             
             // must inject the 'type'-param and value as enum with only one possible value
             // This is done to make sure the json generated from the schema using this oneOf
             // contains the correct "type info"
-            var enumValuesNode = JsonNodeFactory.instance.arrayNode();
+            ArrayNode enumValuesNode = JsonNodeFactory.instance.arrayNode();
             enumValuesNode.add(polyInfo.subTypeName);
 
-            var enumObjectNode = Utils.getOrCreateObjectChild(propertiesNode, polyInfo.typePropertyName);
+            ObjectNode enumObjectNode = Utils.getOrCreateObjectChild(propertiesNode, polyInfo.typePropertyName);
             enumObjectNode.put("type", "string");
             enumObjectNode.set("enum", enumValuesNode);
             enumObjectNode.put("default", polyInfo.subTypeName);
 
             if (ctx.config.hidePolymorphismTypeProperty) {
                 // Make sure the editor hides this polymorphism-specific property
-                var optionsNode = JsonNodeFactory.instance.objectNode();
+                ObjectNode optionsNode = JsonNodeFactory.instance.objectNode();
                 enumObjectNode.set("options", optionsNode);
                 optionsNode.put("hidden", true);
             }
@@ -600,8 +610,8 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
                 // https://github.com/jdorn/json-editor/issues/709
                 // Generate info to help generated editor to select correct oneOf-type
                 // when populating the gui/schema with existing data
-                var objectOptionsNode = Utils.getOrCreateObjectChild( thisObjectNode, "options");
-                var multipleEditorSelectViaPropertyNode = Utils.getOrCreateObjectChild( objectOptionsNode, "multiple_editor_select_via_property");
+                ObjectNode objectOptionsNode = Utils.getOrCreateObjectChild( thisObjectNode, "options");
+                ObjectNode multipleEditorSelectViaPropertyNode = Utils.getOrCreateObjectChild( objectOptionsNode, "multiple_editor_select_via_property");
                 multipleEditorSelectViaPropertyNode.put("property", polyInfo.typePropertyName);
                 multipleEditorSelectViaPropertyNode.put("value", polyInfo.subTypeName);
             }
@@ -657,7 +667,7 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 
                 PropertyNode thisPropertyNode;
                 {
-                    var node = JsonNodeFactory.instance.objectNode();
+                    ObjectNode node = JsonNodeFactory.instance.objectNode();
                     propertiesNode.set(propertyName, node);
 
                     if (ctx.config.usePropertyOrdering) {
@@ -668,17 +678,17 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
                     if (!requiredProperty && ((ctx.config.useOneOfForOption && optionalType) ||
                       (ctx.config.useOneOfForNullables && !optionalType))) {
                         // We support this type being null, insert a oneOf consisting of a sentinel "null" and the real type.
-                        var oneOfArray = JsonNodeFactory.instance.arrayNode();
+                        ArrayNode oneOfArray = JsonNodeFactory.instance.arrayNode();
                         node.set("oneOf", oneOfArray);
 
                         // Create our sentinel "null" value for the case no value is provided.
-                        var oneOfNull = JsonNodeFactory.instance.objectNode();
+                        ObjectNode oneOfNull = JsonNodeFactory.instance.objectNode();
                         oneOfNull.put("type", "null");
                         oneOfNull.put("title", "Not included");
                         oneOfArray.add(oneOfNull);
 
                         // If our nullable/optional type has a value, it'll be this.
-                        var oneOfReal = JsonNodeFactory.instance.objectNode();
+                        ObjectNode oneOfReal = JsonNodeFactory.instance.objectNode();
                         oneOfArray.add(oneOfReal);
 
                         // Return oneOfReal which, from now on, will be used as the node representing this property
@@ -690,7 +700,7 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
                 }
 
                 // Continue processing this property
-                var childVisitor = createChildVisitor(thisPropertyNode.main, prop);
+                JsonSchemaGeneratorVisitor childVisitor = createChildVisitor(thisPropertyNode.main, prop);
 
                 // Push current work in progress since we're about to start working on a new class
                 definitionsHandler.pushWorkInProgress();
@@ -722,25 +732,25 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
                 if (prop == null)
                     return;
 
-                var format = ctx.resolvePropertyFormat(prop);
+                String format = ctx.resolvePropertyFormat(prop);
                 if (format != null)
                     thisPropertyNode.main.put("format", format);
 
                 // Optionally add description
-                var descriptionAnn = prop.getAnnotation(JsonSchemaDescription.class);
-                var descriptionAnn2 = prop.getAnnotation(JsonPropertyDescription.class);
+                JsonSchemaDescription descriptionAnn = prop.getAnnotation(JsonSchemaDescription.class);
+                JsonPropertyDescription descriptionAnn2 = prop.getAnnotation(JsonPropertyDescription.class);
                 if (descriptionAnn != null)
                     thisPropertyNode.meta.put("description", descriptionAnn.value());
                 else if (descriptionAnn2 != null)
                     thisPropertyNode.meta.put("description", descriptionAnn2.value());
 
                 // Optionally add title
-                var titleAnn = prop.getAnnotation(JsonSchemaTitle.class);
+                JsonSchemaTitle titleAnn = prop.getAnnotation(JsonSchemaTitle.class);
                 if (titleAnn != null)
                     thisPropertyNode.meta.put("title", titleAnn.value());
                 else if (ctx.config.autoGenerateTitleForProperties) {
                     // We should generate 'pretty-name' based on propertyName
-                    var title = Utils.camelCaseToSentenceCase(propertyName);
+                    String title = Utils.camelCaseToSentenceCase(propertyName);
                     thisPropertyNode.meta.put("title", title);
                 }
                 
@@ -750,36 +760,36 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 //                title ?| thisPropertyNode.meta.put("title", _);
 
                 // Optionally add options
-                var optionsAnn = prop.getAnnotation(JsonSchemaOptions.class);
+                JsonSchemaOptions optionsAnn = prop.getAnnotation(JsonSchemaOptions.class);
                 if (optionsAnn != null) {
-                    var optionsNode = Utils.getOrCreateObjectChild(thisPropertyNode.meta, "options");
-                    for (var option : optionsAnn.items())
+                    ObjectNode optionsNode = Utils.getOrCreateObjectChild(thisPropertyNode.meta, "options");
+                    for (JsonSchemaOptions.Item option : optionsAnn.items())
                         optionsNode.put(option.name(), option.value());
                 }
                 
                 // unpack operator and foreach-pipe
 //                prop.getAnnotation(JsonSchemaOptions.class) ?| *(_.items()) | option -> {
-//                    var optionsNode = Utils.getOrCreateObjectChild(thisPropertyNode.meta, "options");
+//                    ObjectNode optionsNode = Utils.getOrCreateObjectChild(thisPropertyNode.meta, "options");
 //                    optionsNode.put(option.name(), option.value());
 //                };
 
                 // just null-safe (or null short-circuiting) pipe
 //                for (var option : (prop.getAnnotation(JsonSchemaOptions.class) ?| _.items()) ?? List.of()) {
-//                    var optionsNode = Utils.getOrCreateObjectChild(thisPropertyNode.meta, "options");
+//                    ObjectNode optionsNode = Utils.getOrCreateObjectChild(thisPropertyNode.meta, "options");
 //                    optionsNode.put(_.name(), _.value());
 //                }
 
                 // null-safe foreach (possibly using :? operator)
 //                for (var option : prop.getAnnotation(JsonSchemaOptions.class) ?| _.items()) {
-//                    var optionsNode = Utils.getOrCreateObjectChild(thisPropertyNode.meta, "options");
+//                    ObjectNode optionsNode = Utils.getOrCreateObjectChild(thisPropertyNode.meta, "options");
 //                    optionsNode.put(_.name(), _.value());
 //                }
 
                 // Optionally add JsonSchemaInject
-                var injectAnn = ctx.selectAnnotation(prop, JsonSchemaInject.class);
+                JsonSchemaInject injectAnn = ctx.selectAnnotation(prop, JsonSchemaInject.class);
                 if (injectAnn == null) {
                     // Try to look at the class itself -- Looks like this is the only way to find it if the type is Enum
-                    var injectAnn2 = prop.getType().getRawClass().getAnnotation(JsonSchemaInject.class);
+                	JsonSchemaInject injectAnn2 = prop.getType().getRawClass().getAnnotation(JsonSchemaInject.class);
                     if (injectAnn2 != null && ctx.annotationIsApplicable(injectAnn2))
                         injectAnn = injectAnn2;
                 }

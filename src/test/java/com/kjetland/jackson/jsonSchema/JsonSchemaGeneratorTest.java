@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -38,7 +39,11 @@ import com.kjetland.jackson.jsonSchema.testData.polymorphism5.Parent5;
 import com.kjetland.jackson.jsonSchema.testData.polymorphism6.Parent6;
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper;
 import static java.lang.System.out;
+
+import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -62,7 +67,7 @@ public class JsonSchemaGeneratorTest {
     MixinModule mixinModule = new MixinModule();
 
     {
-        var simpleModule = new SimpleModule();
+        SimpleModule simpleModule = new SimpleModule();
         simpleModule.addSerializer(PojoWithCustomSerializer.class, new PojoWithCustomSerializerSerializer());
         simpleModule.addDeserializer(PojoWithCustomSerializer.class, new PojoWithCustomSerializerDeserializer());
         objectMapper.registerModule(simpleModule);
@@ -101,11 +106,11 @@ public class JsonSchemaGeneratorTest {
     
     @Test void generateSchemaForPojo() {
 
-        var enumList = List.of(MyEnum.values()).stream().map(Object::toString).collect(Collectors.toList());
+    	List<String> enumList = Collections.unmodifiableList( Arrays.asList(MyEnum.values()).stream().map(Object::toString).collect(Collectors.toList()) );
 
         {
-            var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.classNotExtendingAnything);
-            var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.classNotExtendingAnything.getClass(), jsonNode);
+            JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.classNotExtendingAnything);
+            JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.classNotExtendingAnything.getClass(), jsonNode);
 
             assertTrue (!schema.at("/additionalProperties").asBoolean());
             assertEquals (schema.at("/properties/someString/type").asText(), "string");
@@ -115,8 +120,8 @@ public class JsonSchemaGeneratorTest {
         }
 
         {
-          var jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.classNotExtendingAnything);
-          var schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.classNotExtendingAnything.getClass(), jsonNode);
+          JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.classNotExtendingAnything);
+          JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.classNotExtendingAnything.getClass(), jsonNode);
 
           assertTrue (!schema.at("/additionalProperties").asBoolean());
           assertNullableType(schema, "/properties/someString", "string");
@@ -126,8 +131,8 @@ public class JsonSchemaGeneratorTest {
         }
 
         {
-          var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.genericClassVoid);
-          var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.genericClassVoid.getClass(), jsonNode);
+          JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.genericClassVoid);
+          JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.genericClassVoid.getClass(), jsonNode);
           assertEquals (schema.at("/type").asText(), "object");
           assertTrue (!schema.at("/additionalProperties").asBoolean());
           assertEquals (schema.at("/properties/content/type").asText(), "null");
@@ -135,16 +140,16 @@ public class JsonSchemaGeneratorTest {
           assertEquals (schema.at("/properties/list/items/type").asText(), "null");
         }
         {
-          var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.genericMapLike);
-          var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.genericMapLike.getClass(), jsonNode);
+          JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.genericMapLike);
+          JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.genericMapLike.getClass(), jsonNode);
           assertEquals (schema.at("/type").asText(), "object");
           assertEquals (schema.at("/additionalProperties/type").asText(), "string");
         }
     }
     
     @Test void generatingSchemaForPojoWithJsonTypeInfo() {
-        var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.child1);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.child1.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.child1);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.child1.getClass(), jsonNode);
 
         assertTrue (!schema.at("/additionalProperties").asBoolean());
         assertEquals (schema.at("/properties/parentString/type").asText(), "string");
@@ -155,8 +160,8 @@ public class JsonSchemaGeneratorTest {
 
         // Java
         {
-            var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoWithParent);
-            var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoWithParent.getClass(), jsonNode);
+            JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoWithParent);
+            JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoWithParent.getClass(), jsonNode);
 
             assertTrue(!schema.at("/additionalProperties").asBoolean());
             assertEquals(schema.at("/properties/pojoValue/type").asText(), "boolean");
@@ -168,8 +173,8 @@ public class JsonSchemaGeneratorTest {
 
         // Java - html5
         {
-            var jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.pojoWithParent);
-            var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.pojoWithParent.getClass(), jsonNode);
+            JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.pojoWithParent);
+            JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.pojoWithParent.getClass(), jsonNode);
 
             assertTrue(!schema.at("/additionalProperties").asBoolean());
             assertEquals(schema.at("/properties/pojoValue/type").asText(), "boolean");
@@ -181,8 +186,8 @@ public class JsonSchemaGeneratorTest {
 
         // Java - html5/nullable
         {
-            var jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5Nullable, testData.pojoWithParent);
-            var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5Nullable, testData.pojoWithParent.getClass(), jsonNode);
+            JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5Nullable, testData.pojoWithParent);
+            JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5Nullable, testData.pojoWithParent.getClass(), jsonNode);
 
             assertTrue(!schema.at("/additionalProperties").asBoolean());
             assertNullableType(schema, "/properties/pojoValue", "boolean");
@@ -194,8 +199,8 @@ public class JsonSchemaGeneratorTest {
 
         //Using fully-qualified class names;
         {
-            var jsonNode = assertToFromJson(jsonSchemaGeneratorWithIds, testData.pojoWithParent);
-            var schema = generateAndValidateSchema(jsonSchemaGeneratorWithIds, testData.pojoWithParent.getClass(), jsonNode);
+            JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorWithIds, testData.pojoWithParent);
+            JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorWithIds, testData.pojoWithParent.getClass(), jsonNode);
 
             assertTrue(!schema.at("/additionalProperties").asBoolean());
             assertEquals(schema.at("/properties/pojoValue/type").asText(), "boolean");
@@ -207,8 +212,8 @@ public class JsonSchemaGeneratorTest {
 
         // Using fully-qualified class names and nullable types
         {
-            var jsonNode = assertToFromJson(jsonSchemaGeneratorWithIdsNullable, testData.pojoWithParent);
-            var schema = generateAndValidateSchema(jsonSchemaGeneratorWithIdsNullable, testData.pojoWithParent.getClass(), jsonNode);
+            JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorWithIdsNullable, testData.pojoWithParent);
+            JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorWithIdsNullable, testData.pojoWithParent.getClass(), jsonNode);
 
             assertTrue(!schema.at("/additionalProperties").asBoolean());
             assertNullableType(schema, "/properties/pojoValue", "boolean");
@@ -254,7 +259,7 @@ public class JsonSchemaGeneratorTest {
         assertChild1(node, path, defName, typeParamName, typeName, false);
     }
     void assertChild1(JsonNode node, String path, String defName, String typeParamName, String typeName, boolean html5Checks) {
-        var child1 = getNodeViaRefs(node, path, defName);
+        JsonNode child1 = getNodeViaRefs(node, path, defName);
         assertJsonSubTypesInfo(child1, typeParamName, typeName, html5Checks);
         assertEquals (child1.at("/properties/parentString/type").asText(), "string");
         assertEquals (child1.at("/properties/child1String/type").asText(), "string");
@@ -273,7 +278,7 @@ public class JsonSchemaGeneratorTest {
         assertNullableChild1(node, path, defName, false);
     }
     void assertNullableChild1(JsonNode node, String path, String defName, boolean html5Checks) {
-        var child1 = getNodeViaRefs(node, path, defName);
+        JsonNode child1 = getNodeViaRefs(node, path, defName);
         assertJsonSubTypesInfo(child1, "type", "child1", html5Checks);
         assertNullableType(child1, "/properties/parentString", "string");
         assertNullableType(child1, "/properties/child1String", "string");
@@ -295,7 +300,7 @@ public class JsonSchemaGeneratorTest {
         assertChild2(node, path, defName, typeParamName, typeName, false);
     }
     void assertChild2(JsonNode node, String path, String defName, String typeParamName, String typeName, boolean html5Checks) {
-        var child2 = getNodeViaRefs(node, path, defName);
+        JsonNode child2 = getNodeViaRefs(node, path, defName);
         assertJsonSubTypesInfo(child2, typeParamName, typeName, html5Checks);
         assertEquals (child2.at("/properties/parentString/type").asText(), "string");
         assertEquals (child2.at("/properties/child2int/type").asText(), "integer");
@@ -311,69 +316,69 @@ public class JsonSchemaGeneratorTest {
         assertNullableChild2(node, path, defName, false);
     }
     void assertNullableChild2(JsonNode node, String path, String defName, boolean html5Checks) {
-        var child2 = getNodeViaRefs(node, path, defName);
+        JsonNode child2 = getNodeViaRefs(node, path, defName);
         assertJsonSubTypesInfo(child2, "type", "child2", html5Checks);
         assertNullableType(child2, "/properties/parentString", "string");
         assertNullableType(child2, "/properties/child2int", "integer");
     }
     
     @Test void generateSchemaForSuperClassAnnotatedWithJsonTypeInfo_use_IdNAME() {
-        var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.child1);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.child1);
         assertToFromJson(jsonSchemaGenerator, testData.child1, Parent.class);
 
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, Parent.class, jsonNode);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, Parent.class, jsonNode);
 
         assertChild1(schema, "/oneOf");
         assertChild2(schema, "/oneOf");
     }
     
     @Test void generateSchemaForSuperClassAnnotatedWithJsonTypeInfo_use_IdNAME_Nullables() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.child1);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.child1);
         assertToFromJson(jsonSchemaGeneratorNullable, testData.child1, Parent.class);
 
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, Parent.class, jsonNode);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, Parent.class, jsonNode);
 
         assertChild1(schema, "/oneOf");
         assertChild2(schema, "/oneOf");
     }
 
     @Test void generateSchemaForSuperClassAnnotatedWithJsonTypeInfo_use_IdCLASS() {
-        var config = JsonSchemaConfig.DEFAULT;
-        var g = new JsonSchemaGenerator(objectMapper, config);
+        JsonSchemaConfig config = JsonSchemaConfig.DEFAULT;
+        JsonSchemaGenerator g = new JsonSchemaGenerator(objectMapper, config);
 
-        var jsonNode = assertToFromJson(g, testData.child21);
+        JsonNode jsonNode = assertToFromJson(g, testData.child21);
         assertToFromJson(g, testData.child21, Parent2.class);
 
-        var schema = generateAndValidateSchema(g, Parent2.class, jsonNode);
+        JsonNode schema = generateAndValidateSchema(g, Parent2.class, jsonNode);
 
         assertChild1(schema, "/oneOf", "Child21", "clazz", "com.kjetland.jackson.jsonSchema.testData.polymorphism2.Child21");
         assertChild2(schema, "/oneOf", "Child22", "clazz", "com.kjetland.jackson.jsonSchema.testData.polymorphism2.Child22");
     }
 
     @Test void generateSchemaForSuperClassAnnotatedWithJsonTypeInfo_use_IdMINIMALCLASS() {
-        var config = JsonSchemaConfig.DEFAULT;
-        var g = new JsonSchemaGenerator(objectMapper, config);
+        JsonSchemaConfig config = JsonSchemaConfig.DEFAULT;
+        JsonSchemaGenerator g = new JsonSchemaGenerator(objectMapper, config);
 
-        var jsonNode = assertToFromJson(g, testData.child51);
+        JsonNode jsonNode = assertToFromJson(g, testData.child51);
         assertToFromJson(g, testData.child51, Parent5.class);
 
-        var schema = generateAndValidateSchema(g, Parent5.class, jsonNode);
+        JsonNode schema = generateAndValidateSchema(g, Parent5.class, jsonNode);
 
         assertChild1(schema, "/oneOf", "Child51", "clazz", ".Child51");
         assertChild2(schema, "/oneOf", "Child52", "clazz", ".Child52");
 
-        var embeddedTypeName = objectMapper.valueToTree(new Parent5.Child51InnerClass()).get("clazz").asText();
+        String embeddedTypeName = objectMapper.valueToTree(new Parent5.Child51InnerClass()).get("clazz").asText();
         assertChild1(schema, "/oneOf", "Child51InnerClass", "clazz", embeddedTypeName);
     }
 
     @Test void generateSchemaForInterfaceAnnotatedWithJsonTypeInfo_use_IdMINIMALCLASS() {
-        var config = JsonSchemaConfig.DEFAULT;
-        var g = new JsonSchemaGenerator(objectMapper, config);
+        JsonSchemaConfig config = JsonSchemaConfig.DEFAULT;
+        JsonSchemaGenerator g = new JsonSchemaGenerator(objectMapper, config);
 
-        var jsonNode = assertToFromJson(g, testData.child61);
+        JsonNode jsonNode = assertToFromJson(g, testData.child61);
         assertToFromJson(g, testData.child61, Parent6.class);
 
-        var schema = generateAndValidateSchema(g, Parent6.class, jsonNode);
+        JsonNode schema = generateAndValidateSchema(g, Parent6.class, jsonNode);
 
         assertChild1(schema, "/oneOf", "Child61", "clazz", ".Child61");
         assertChild2(schema, "/oneOf", "Child62", "clazz", ".Child62");
@@ -381,10 +386,10 @@ public class JsonSchemaGeneratorTest {
 
     @Test void generateSchemaForSuperClassAnnotatedWithJsonTypeInfo_include_AsEXISTINGPROPERTY() {
 
-        var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.child31);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.child31);
         assertToFromJson(jsonSchemaGenerator, testData.child31, Parent3.class);
 
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, Parent3.class, jsonNode);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, Parent3.class, jsonNode);
 
         assertChild1(schema, "/oneOf", "Child31", "type", "child31");
         assertChild2(schema, "/oneOf", "Child32", "type", "child32");
@@ -392,25 +397,25 @@ public class JsonSchemaGeneratorTest {
 
     @Test void generateSchemaForSuperClassAnnotatedWithJsonTypeInfo_include_AsCUSTOM() {
 
-        var jsonNode1 = assertToFromJson(jsonSchemaGenerator, testData.child41);
-        var jsonNode2 = assertToFromJson(jsonSchemaGenerator, testData.child42);
+        JsonNode jsonNode1 = assertToFromJson(jsonSchemaGenerator, testData.child41);
+        JsonNode jsonNode2 = assertToFromJson(jsonSchemaGenerator, testData.child42);
 
-        var schema1 = generateAndValidateSchema(jsonSchemaGenerator, Child41.class, jsonNode1);
-        var schema2 = generateAndValidateSchema(jsonSchemaGenerator, Child42.class, jsonNode2);
+        JsonNode schema1 = generateAndValidateSchema(jsonSchemaGenerator, Child41.class, jsonNode1);
+        JsonNode schema2 = generateAndValidateSchema(jsonSchemaGenerator, Child42.class, jsonNode2);
 
         assertJsonSubTypesInfo(schema1, "type", "Child41");
         assertJsonSubTypesInfo(schema2, "type", "Child42");
     }
 
     @Test void generateSchemaForClassContainingGenericsWithSameBaseTypeButDifferentTypeArguments() {
-        var config = JsonSchemaConfig.DEFAULT;
-        var g = new JsonSchemaGenerator(objectMapper, config);
+        JsonSchemaConfig config = JsonSchemaConfig.DEFAULT;
+        JsonSchemaGenerator g = new JsonSchemaGenerator(objectMapper, config);
 
-        var instance = new GenericClassContainer();
-        var jsonNode = assertToFromJson(g, instance);
+        GenericClassContainer instance = new GenericClassContainer();
+        JsonNode jsonNode = assertToFromJson(g, instance);
         assertToFromJson(g, instance, GenericClassContainer.class);
 
-        var schema = generateAndValidateSchema(g, GenericClassContainer.class, jsonNode);
+        JsonNode schema = generateAndValidateSchema(g, GenericClassContainer.class, jsonNode);
 
         assertEquals (schema.at("/definitions/BoringClass/properties/data/type").asText(), "integer");
         assertEquals (schema.at("/definitions/GenericClass(String)/properties/data/type").asText(), "string");
@@ -421,24 +426,24 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void failOnUnknownProperties() {
-        var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.manyPrimitives);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.manyPrimitives.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.manyPrimitives);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.manyPrimitives.getClass(), jsonNode);
 
         assertFalse (schema.at("/additionalProperties").asBoolean());
     }
 
     @Test void failOnUnknownPropertiesOff() {
-        var generator = new JsonSchemaGenerator(objectMapper, 
+    	JsonSchemaGenerator generator = new JsonSchemaGenerator(objectMapper, 
                 JsonSchemaConfig.DEFAULT.toBuilder().failOnUnknownProperties(false).build());
-        var jsonNode = assertToFromJson(generator, testData.manyPrimitives);
-        var schema = generateAndValidateSchema(generator, testData.manyPrimitives.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(generator, testData.manyPrimitives);
+        JsonNode schema = generateAndValidateSchema(generator, testData.manyPrimitives.getClass(), jsonNode);
 
         assertTrue (schema.at("/additionalProperties").asBoolean());
     }
 
     @Test void primitives() {
-        var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.manyPrimitives);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.manyPrimitives.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.manyPrimitives);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.manyPrimitives.getClass(), jsonNode);
 
         assertEquals (schema.at("/properties/_string/type").asText(), "string");
 
@@ -470,8 +475,8 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void nullables() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.manyPrimitivesNulls);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.manyPrimitivesNulls.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.manyPrimitivesNulls);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.manyPrimitivesNulls.getClass(), jsonNode);
 
         assertNullableType(schema, "/properties/_string", "string");
         assertNullableType(schema, "/properties/_integer", "integer");
@@ -498,8 +503,8 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void optional() {
-        var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoUsingOptionalJava);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoUsingOptionalJava.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoUsingOptionalJava);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoUsingOptionalJava.getClass(), jsonNode);
 
         assertEquals (schema.at("/properties/_string/type").asText(), "string");
         assertPropertyRequired(schema, "_string", false); // Should allow null by default
@@ -507,7 +512,7 @@ public class JsonSchemaGeneratorTest {
         assertEquals (schema.at("/properties/_integer/type").asText(), "integer");
         assertPropertyRequired(schema, "_integer", false); // Should allow null by default
 
-        var child1 = getNodeViaRefs(schema, schema.at("/properties/child1"), "Child1");
+        JsonNode child1 = getNodeViaRefs(schema, schema.at("/properties/child1"), "Child1");
 
         assertJsonSubTypesInfo(child1, "type", "child1");
         assertEquals (child1.at("/properties/parentString/type").asText(), "string");
@@ -520,13 +525,13 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void nullableOptional() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.pojoUsingOptionalJava);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.pojoUsingOptionalJava.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.pojoUsingOptionalJava);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.pojoUsingOptionalJava.getClass(), jsonNode);
 
         assertNullableType(schema, "/properties/_string", "string");
         assertNullableType(schema, "/properties/_integer", "integer");
 
-        var child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1");
+        JsonNode child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1");
 
         assertJsonSubTypesInfo(child1, "type", "child1");
         assertNullableType(child1, "/properties/parentString", "string");
@@ -539,21 +544,21 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void customSerializerNotOverridingJsonSerializer_acceptJsonFormatVisitor() {
-        var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoWithCustomSerializer);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoWithCustomSerializer.getClass(), jsonNode);
-        assertEquals (toList(schema.fieldNames()), List.of("$schema", "title")); // Empty schema due to custom serializer
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoWithCustomSerializer);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoWithCustomSerializer.getClass(), jsonNode);
+        assertEquals (toList(schema.fieldNames()), Collections.unmodifiableList( Arrays.asList("$schema", "title") )); // Empty schema due to custom serializer
     }
 
     @Test void objectWithPropertyUsingCustomSerializerNotOverridingJsonSerializer_acceptJsonFormatVisitor() {
-        var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.objectWithPropertyWithCustomSerializer);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.objectWithPropertyWithCustomSerializer.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.objectWithPropertyWithCustomSerializer);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.objectWithPropertyWithCustomSerializer.getClass(), jsonNode);
         assertEquals (schema.at("/properties/s/type").asText(), "string");
-        assertEquals (toList(schema.at("/properties/child").fieldNames()), List.of());
+        assertEquals (toList(schema.at("/properties/child").fieldNames()), Collections.unmodifiableList(new ArrayList<>()));
     }
 
     void pojoWithArrays_impl(Object pojo, Class<?> clazz, JsonSchemaGenerator g, boolean html5Checks) {
-        var jsonNode = assertToFromJson(g, pojo);
-        var schema = generateAndValidateSchema(g, clazz, jsonNode);
+        JsonNode jsonNode = assertToFromJson(g, pojo);
+        JsonNode schema = generateAndValidateSchema(g, clazz, jsonNode);
 
         assertEquals (schema.at("/properties/intArray1/type").asText(), "array");
         assertEquals (schema.at("/properties/intArray1/items/type").asText(), "integer");
@@ -593,8 +598,8 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void pojoWithArraysNullable() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.pojoWithArraysNullable);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.pojoWithArraysNullable.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.pojoWithArraysNullable);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.pojoWithArraysNullable.getClass(), jsonNode);
 
         assertNullableType(schema, "/properties/intArray1", "array");
         assertEquals (schema.at("/properties/intArray1/oneOf/1/items/type").asText(), "integer");
@@ -619,40 +624,40 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void recursivePojo() {
-        var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.recursivePojo);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.recursivePojo.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.recursivePojo);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.recursivePojo.getClass(), jsonNode);
 
         assertEquals (schema.at("/properties/myText/type").asText(), "string");
 
         assertEquals (schema.at("/properties/children/type").asText(), "array");
-        var defViaRef = getNodeViaRefs(schema, schema.at("/properties/children/items"), "RecursivePojo");
+        ObjectNode defViaRef = getNodeViaRefs(schema, schema.at("/properties/children/items"), "RecursivePojo");
 
         assertEquals (defViaRef.at("/properties/myText/type").asText(), "string");
         assertEquals (defViaRef.at("/properties/children/type").asText(), "array");
-        var defViaRef2 = getNodeViaRefs(schema, defViaRef.at("/properties/children/items"), "RecursivePojo");
+        ObjectNode defViaRef2 = getNodeViaRefs(schema, defViaRef.at("/properties/children/items"), "RecursivePojo");
 
         assertEquals (defViaRef, defViaRef2);
     }
 
     @Test void recursivePojoNullable() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.recursivePojo);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.recursivePojo.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.recursivePojo);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.recursivePojo.getClass(), jsonNode);
 
         assertNullableType(schema, "/properties/myText", "string");
 
         assertNullableType(schema, "/properties/children", "array");
-        var defViaRef = getNodeViaRefs(schema, schema.at("/properties/children/oneOf/1/items"), "RecursivePojo");
+        ObjectNode defViaRef = getNodeViaRefs(schema, schema.at("/properties/children/oneOf/1/items"), "RecursivePojo");
 
         assertNullableType(defViaRef, "/properties/myText", "string");
         assertNullableType(defViaRef, "/properties/children", "array");
-        var defViaRef2 = getNodeViaRefs(schema, defViaRef.at("/properties/children/oneOf/1/items"), "RecursivePojo");
+        ObjectNode defViaRef2 = getNodeViaRefs(schema, defViaRef.at("/properties/children/oneOf/1/items"), "RecursivePojo");
 
         assertEquals (defViaRef, defViaRef2);
     }
 
     @Test void pojoUsingMaps() {
-        var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoUsingMaps);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoUsingMaps.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoUsingMaps);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoUsingMaps.getClass(), jsonNode);
 
         assertEquals (schema.at("/properties/string2Integer/type").asText(), "object");
         assertEquals (schema.at("/properties/string2Integer/additionalProperties/type").asText(), "integer");
@@ -666,8 +671,8 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void pojoUsingMapsNullable() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.pojoUsingMaps);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.pojoUsingMaps.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.pojoUsingMaps);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.pojoUsingMaps.getClass(), jsonNode);
 
         assertNullableType(schema, "/properties/string2Integer", "object");
         assertEquals (schema.at("/properties/string2Integer/oneOf/1/additionalProperties/type").asText(), "integer");
@@ -681,10 +686,10 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void pojoUsingCustomAnnotations() {
-        var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoUsingFormat);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoUsingFormat.getClass(), jsonNode);
-        var schemaHTML5Date = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.pojoUsingFormat.getClass(), jsonNode);
-        var schemaHTML5DateNullable = generateAndValidateSchema(jsonSchemaGeneratorHTML5Nullable, testData.pojoUsingFormat.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoUsingFormat);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoUsingFormat.getClass(), jsonNode);
+        JsonNode schemaHTML5Date = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.pojoUsingFormat.getClass(), jsonNode);
+        JsonNode schemaHTML5DateNullable = generateAndValidateSchema(jsonSchemaGeneratorHTML5Nullable, testData.pojoUsingFormat.getClass(), jsonNode);
 
         assertEquals (schema.at("/format").asText(), "grid");
         assertEquals (schema.at("/description").asText(), "This is our pojo");
@@ -714,8 +719,8 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void usingJavaType() {
-        var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoUsingFormat);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, objectMapper.constructType(testData.pojoUsingFormat.getClass()), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoUsingFormat);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, objectMapper.constructType(testData.pojoUsingFormat.getClass()), jsonNode);
 
         assertEquals (schema.at("/format").asText(), "grid");
         assertEquals (schema.at("/description").asText(), "This is our pojo");
@@ -740,23 +745,23 @@ public class JsonSchemaGeneratorTest {
     }
     
     @Test void usingJavaTypeWithJsonTypeName() {
-        var config = JsonSchemaConfig.DEFAULT;
-        var g = new JsonSchemaGenerator(objectMapper, config);
+        JsonSchemaConfig config = JsonSchemaConfig.DEFAULT;
+        JsonSchemaGenerator g = new JsonSchemaGenerator(objectMapper, config);
 
-        var instance = new BoringContainer();
+        BoringContainer instance = new BoringContainer();
         instance.child1 = new PojoUsingJsonTypeName();
         instance.child1.stringWithDefault = "test";
-        var jsonNode = assertToFromJson(g, instance);
+        JsonNode jsonNode = assertToFromJson(g, instance);
         assertToFromJson(g, instance, BoringContainer.class);
 
-        var schema = generateAndValidateSchema(g, BoringContainer.class, jsonNode);
+        JsonNode schema = generateAndValidateSchema(g, BoringContainer.class, jsonNode);
 
         assertEquals (schema.at("/definitions/OtherTypeName/type").asText(), "object");
     }
 
     @Test void javaOptionalJsonEditor() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.pojoUsingOptionalJava);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.pojoUsingOptionalJava.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.pojoUsingOptionalJava);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.pojoUsingOptionalJava.getClass(), jsonNode);
 
         assertNullableType(schema, "/properties/_string", "string");
         assertEquals (schema.at("/properties/_string/title").asText(), "_string");
@@ -766,7 +771,7 @@ public class JsonSchemaGeneratorTest {
 
         assertEquals (schema.at("/properties/child1/oneOf/0/type").asText(), "null");
         assertEquals (schema.at("/properties/child1/oneOf/0/title").asText(), "Not included");
-        var child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1");
+        JsonNode child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1");
         assertEquals (schema.at("/properties/child1/title").asText(), "Child 1");
 
         assertJsonSubTypesInfo(child1, "type", "child1", true);
@@ -781,15 +786,15 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void javaOptionalJsonEditorNullable() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5Nullable, testData.pojoUsingOptionalJava);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5Nullable, testData.pojoUsingOptionalJava.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5Nullable, testData.pojoUsingOptionalJava);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5Nullable, testData.pojoUsingOptionalJava.getClass(), jsonNode);
 
         assertNullableType(schema, "/properties/_string", "string");
         assertNullableType(schema, "/properties/_integer", "integer");
 
         assertEquals (schema.at("/properties/child1/oneOf/0/type").asText(), "null");
         assertEquals (schema.at("/properties/child1/oneOf/0/title").asText(), "Not included");
-        var child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1");
+        JsonNode child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1");
 
         assertJsonSubTypesInfo(child1, "type", "child1", true);
         assertNullableType(child1, "/properties/parentString", "string");
@@ -806,38 +811,38 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void propertyOrdering() {
-        var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.classNotExtendingAnything);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator, testData.classNotExtendingAnything.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.classNotExtendingAnything);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, testData.classNotExtendingAnything.getClass(), jsonNode);
 
         assertTrue (schema.at("/properties/someString/propertyOrder").isMissingNode());
     }
 
     @Test void propertyOrderingNullable() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.classNotExtendingAnything);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.classNotExtendingAnything.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.classNotExtendingAnything);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.classNotExtendingAnything.getClass(), jsonNode);
 
         assertTrue (schema.at("/properties/someString/propertyOrder").isMissingNode());
     }
 
     @Test void propertyOrderingJsonEditor() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.classNotExtendingAnything);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.classNotExtendingAnything.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.classNotExtendingAnything);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.classNotExtendingAnything.getClass(), jsonNode);
 
         assertEquals (schema.at("/properties/someString/propertyOrder").asInt(), 1);
         assertEquals (schema.at("/properties/myEnum/propertyOrder").asInt(), 2);
     }
 
     @Test void propertyOrderingJsonEditorNullable() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5Nullable, testData.classNotExtendingAnything);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5Nullable, testData.classNotExtendingAnything.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5Nullable, testData.classNotExtendingAnything);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5Nullable, testData.classNotExtendingAnything.getClass(), jsonNode);
 
         assertEquals (schema.at("/properties/someString/propertyOrder").asInt(), 1);
         assertEquals (schema.at("/properties/myEnum/propertyOrder").asInt(), 2);
     }
 
     @Test void dates() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.manyDates);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.manyDates.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.manyDates);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.manyDates.getClass(), jsonNode);
 
         assertEquals (schema.at("/properties/javaLocalDateTime/format").asText(), "datetime-local");
         assertEquals (schema.at("/properties/javaOffsetDateTime/format").asText(), "datetime");
@@ -846,12 +851,12 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void defaultAndExamples() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.defaultAndExamples);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.defaultAndExamples.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.defaultAndExamples);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.defaultAndExamples.getClass(), jsonNode);
 
-        assertEquals (getArrayNodeAsListOfStrings(schema.at("/properties/emailValue/examples")), List.of("user@example.com"));
+        assertEquals (getArrayNodeAsListOfStrings(schema.at("/properties/emailValue/examples")), Collections.unmodifiableList( Arrays.asList("user@example.com") ));
         assertEquals (schema.at("/properties/fontSize/default").asText(), "12");
-        assertEquals (getArrayNodeAsListOfStrings(schema.at("/properties/fontSize/examples")), List.of("10", "14", "18"));
+        assertEquals (getArrayNodeAsListOfStrings(schema.at("/properties/fontSize/examples")), Collections.unmodifiableList( Arrays.asList("10", "14", "18") ));
 
         assertEquals (schema.at("/properties/defaultStringViaJsonValue/default").asText(), "ds");
         assertEquals (schema.at("/properties/defaultIntViaJsonValue/default").asText(), "1");
@@ -859,8 +864,8 @@ public class JsonSchemaGeneratorTest {
     }
     
     @Test void validation1() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.classUsingValidation);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.classUsingValidation.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.classUsingValidation);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.classUsingValidation.getClass(), jsonNode);
 
         verifyStringProperty(schema, "stringUsingNotNull", 1, null, null, true);
         verifyStringProperty(schema, "stringUsingNotBlank", 1, null, "^.*\\S+.*$", true);
@@ -886,8 +891,8 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void validation2() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.pojoUsingValidation);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.pojoUsingValidation.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.pojoUsingValidation);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.pojoUsingValidation.getClass(), jsonNode);
 
         verifyStringProperty(schema, "stringUsingNotNull", 1, null, null, true);
         verifyStringProperty(schema, "stringUsingNotBlank", 1, null, "^.*\\S+.*$", true);
@@ -917,7 +922,7 @@ public class JsonSchemaGeneratorTest {
         assertNumericPropertyValidation(schema, propertyName, "minLength", minLength);
         assertNumericPropertyValidation(schema, propertyName, "maxLength", maxLength);
 
-        var matchNode = schema.at("/properties/"+propertyName+"/pattern");
+        JsonNode matchNode = schema.at("/properties/"+propertyName+"/pattern");
         if (pattern != null)
             assertEquals (matchNode.asText(), pattern);
         else
@@ -952,7 +957,7 @@ public class JsonSchemaGeneratorTest {
     }
 
     void assertNumericPropertyValidation(JsonNode schema, String propertyName, String validationName, Integer value) {
-        var jsonNode = schema.at("/properties/"+propertyName+"/"+validationName+"");
+        JsonNode jsonNode = schema.at("/properties/"+propertyName+"/"+validationName+"");
         if (value != null)
             assertEquals (jsonNode.asInt(), value);
         else
@@ -960,7 +965,7 @@ public class JsonSchemaGeneratorTest {
     }
 
     void assertNumericDoublePropertyValidation(JsonNode schema, String propertyName, String validationName, Double value) {
-        var jsonNode = schema.at("/properties/"+propertyName+"/"+validationName+"");
+        JsonNode jsonNode = schema.at("/properties/"+propertyName+"/"+validationName+"");
         if (value != null)
             assertEquals (jsonNode.asDouble(), value);
         else
@@ -970,11 +975,11 @@ public class JsonSchemaGeneratorTest {
     ClassUsingValidationWithGroups objectUsingGroups = testData.classUsingValidationWithGroups;
 
     @Test void validationUsingNoGroups() {
-        var jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
-          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(List.of()).build());
+        JsonSchemaGenerator jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
+          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(new ArrayList<Class<?>>()).build());
 
-        var jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
 
         checkInjected(schema, "noGroup", true);
         checkInjected(schema, "defaultGroup", true);
@@ -987,11 +992,11 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void validationUsingDefaultGroup() {
-        var jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
-          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(List.of(Default.class)).build());
+        JsonSchemaGenerator jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
+          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(Collections.unmodifiableList( Arrays.asList(Default.class) )).build());
 
-        var jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
 
         checkInjected(schema, "noGroup", true);
         checkInjected(schema, "defaultGroup", true);
@@ -1004,11 +1009,11 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void validationUsingGroup1() {
-        var jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
-          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(List.of(ValidationGroup1.class)).build());
+        JsonSchemaGenerator jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
+          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(Collections.unmodifiableList( Arrays.asList(ValidationGroup1.class) )).build());
 
-        var jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
 
         checkInjected(schema, "noGroup", false);
         checkInjected(schema, "defaultGroup", false);
@@ -1021,11 +1026,11 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void validationUsingGroup1AndDefault() {
-        var jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
-          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(List.of(ValidationGroup1.class, Default.class)).build());
+        JsonSchemaGenerator jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
+          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(Collections.unmodifiableList( Arrays.asList(ValidationGroup1.class, Default.class) )).build());
 
-        var jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
 
         checkInjected(schema, "noGroup", true);
         checkInjected(schema, "defaultGroup", true);
@@ -1038,11 +1043,11 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void validationUsingGroup2() {
-        var jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
-          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(List.of(ValidationGroup2.class)).build());
+        JsonSchemaGenerator jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
+          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(Collections.unmodifiableList( Arrays.asList(ValidationGroup2.class) )).build());
 
-        var jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
 
         checkInjected(schema, "noGroup", false);
         checkInjected(schema, "defaultGroup", false);
@@ -1055,11 +1060,11 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void validationUsingGroup1and2() {
-        var jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
-          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(List.of(ValidationGroup1.class, ValidationGroup2.class)).build());
+        JsonSchemaGenerator jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
+          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(Collections.unmodifiableList( Arrays.asList(ValidationGroup1.class, ValidationGroup2.class) )).build());
 
-        var jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
 
         checkInjected(schema, "noGroup", false);
         checkInjected(schema, "defaultGroup", false);
@@ -1072,11 +1077,11 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void validationUsingGroup3() {
-        var jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
-          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(List.of(ValidationGroup3_notInUse.class)).build());
+        JsonSchemaGenerator jsonSchemaGenerator_Group = new JsonSchemaGenerator(objectMapper,
+          JsonSchemaConfig.DEFAULT.toBuilder().javaxValidationGroups(Collections.unmodifiableList( Arrays.asList(ValidationGroup3_notInUse.class) )).build());
 
-        var jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
-        var schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass(), jsonNode);
 
         checkInjected(schema, "noGroup", false);
         checkInjected(schema, "defaultGroup", false);
@@ -1094,20 +1099,20 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void polymorphismUsingMixin() {
-      var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.mixinChild1);
+      JsonNode jsonNode = assertToFromJson(jsonSchemaGenerator, testData.mixinChild1);
       assertToFromJson(jsonSchemaGenerator, testData.mixinChild1, MixinParent.class);
 
-      var schema = generateAndValidateSchema(jsonSchemaGenerator, MixinParent.class, jsonNode);
+      JsonNode schema = generateAndValidateSchema(jsonSchemaGenerator, MixinParent.class, jsonNode);
 
       assertChild1(schema, "/oneOf", "MixinChild1");
       assertChild2(schema, "/oneOf", "MixinChild2");
     }
 
     @Test void polymorphismUsingMixinNullable() {
-      var jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.mixinChild1);
+      JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.mixinChild1);
       assertToFromJson(jsonSchemaGeneratorNullable, testData.mixinChild1, MixinParent.class);
 
-      var schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, MixinParent.class, jsonNode);
+      JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, MixinParent.class, jsonNode);
 
       assertNullableChild1(schema, "/oneOf", "MixinChild1");
       assertNullableChild2(schema, "/oneOf", "MixinChild2");
@@ -1119,14 +1124,14 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void polymorphismOneOfOrdering() {
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, PolymorphismOrdering.class, null);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, PolymorphismOrdering.class, null);
         List<String> oneOfList = toList(schema.at("/oneOf").iterator()).stream().map(e -> e.at("/$ref").asText()).collect(Collectors.toList());
-        assertEquals (List.of("#/definitions/PolymorphismOrderingChild3", "#/definitions/PolymorphismOrderingChild1", "#/definitions/PolymorphismOrderingChild4", "#/definitions/PolymorphismOrderingChild2"), oneOfList);
+        assertEquals (Collections.unmodifiableList( Arrays.asList("#/definitions/PolymorphismOrderingChild3", "#/definitions/PolymorphismOrderingChild1", "#/definitions/PolymorphismOrderingChild4", "#/definitions/PolymorphismOrderingChild2") ), oneOfList);
     }
 
     @Test void notNullAnnotationsAndNullableTypes() {
-        var jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.notNullableButNullBoolean);
-        var schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.notNullableButNullBoolean.getClass(), null);
+        JsonNode jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.notNullableButNullBoolean);
+        JsonNode schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.notNullableButNullBoolean.getClass(), null);
 
         Exception exception = null;
         try {
@@ -1145,12 +1150,14 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void usingSchemaInject() throws JsonMappingException {
-        var customUserNameLoaderVariable = "xx";
-        var customUserNamesLoader = new CustomUserNamesLoader(customUserNameLoaderVariable);
+        String customUserNameLoaderVariable = "xx";
+        CustomUserNamesLoader customUserNamesLoader = new CustomUserNamesLoader(customUserNameLoaderVariable);
 
-        var config = JsonSchemaConfig.DEFAULT.toBuilder().jsonSuppliers(Map.of("myCustomUserNamesLoader", customUserNamesLoader)).build();
-        var _jsonSchemaGeneratorScala = new JsonSchemaGenerator(objectMapper, config);
-        var schema = _jsonSchemaGeneratorScala.generateJsonSchema(UsingJsonSchemaInject.class);
+        JsonSchemaConfig config = JsonSchemaConfig.DEFAULT.toBuilder().jsonSuppliers(Stream.of(
+        		  new AbstractMap.SimpleImmutableEntry<>("myCustomUserNamesLoader", customUserNamesLoader))
+        		  .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))).build();
+        JsonSchemaGenerator _jsonSchemaGeneratorScala = new JsonSchemaGenerator(objectMapper, config);
+        JsonNode schema = _jsonSchemaGeneratorScala.generateJsonSchema(UsingJsonSchemaInject.class);
 
         out.println("--------------------------------------------");
         out.println(asPrettyJson(schema, _jsonSchemaGeneratorScala.objectMapper));
@@ -1173,35 +1180,36 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void usingJsonSchemaInjectWithTopLevelMergeFalse() throws JsonMappingException {
-        var config = JsonSchemaConfig.DEFAULT;
-        var _jsonSchemaGeneratorScala = new JsonSchemaGenerator(objectMapper, config);
-        var schema = _jsonSchemaGeneratorScala.generateJsonSchema(UsingJsonSchemaInjectWithTopLevelMergeFalse.class);
+        JsonSchemaConfig config = JsonSchemaConfig.DEFAULT;
+        JsonSchemaGenerator _jsonSchemaGeneratorScala = new JsonSchemaGenerator(objectMapper, config);
+        JsonNode schema = _jsonSchemaGeneratorScala.generateJsonSchema(UsingJsonSchemaInjectWithTopLevelMergeFalse.class);
 
-        var schemaJson = asPrettyJson(schema, _jsonSchemaGeneratorScala.objectMapper);
+        String schemaJson = asPrettyJson(schema, _jsonSchemaGeneratorScala.objectMapper);
         out.println("--------------------------------------------");
         out.println(schemaJson);
 
-        var fasit = 
+        String fasit = 
             "{\n" +
             "  \"everything\" : \"should be replaced\"\n" +
             "}";
-
-        assertEquals(fasit, schemaJson);
+        assertEquals(fasit.replace("\r\n", "\n"), schemaJson.replaceAll("\r\n", "\n"));
     }
     
     @Test void preventingPolymorphismWithClassTypeRemapping_classWithProperty() {
-        var config = JsonSchemaConfig.DEFAULT.toBuilder().classTypeReMapping(Map.of(Parent.class, Child1.class)).build();
-        var _jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config);
+    	JsonSchemaConfig config = JsonSchemaConfig.DEFAULT.toBuilder().classTypeReMapping(Stream.of(
+      		  new AbstractMap.SimpleImmutableEntry<>(Parent.class, Child1.class))
+      		  .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))).build();
+        JsonSchemaGenerator _jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config);
 
         // PojoWithParent has a property of type Parent (which uses polymorphism).
         // Default rendering schema will make this property oneOf Child1 and Child2.
         // In this test we're preventing this by remapping Parent to Child1.
         // Now, when generating the schema, we should generate it as if the property where of type Child1
 
-        var jsonNode = assertToFromJson(_jsonSchemaGenerator, testData.pojoWithParent);
+        JsonNode jsonNode = assertToFromJson(_jsonSchemaGenerator, testData.pojoWithParent);
         assertToFromJson(_jsonSchemaGenerator, testData.pojoWithParent, PojoWithParent.class);
 
-        var schema = generateAndValidateSchema(_jsonSchemaGenerator, PojoWithParent.class, jsonNode);
+        JsonNode schema = generateAndValidateSchema(_jsonSchemaGenerator, PojoWithParent.class, jsonNode);
 
         assertTrue (!schema.at("/additionalProperties").asBoolean());
         assertEquals (schema.at("/properties/pojoValue/type").asText(), "boolean");
@@ -1211,14 +1219,16 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void preventingPolymorphismWithClassTypeRemapping_rootClass() {
-        var config = JsonSchemaConfig.DEFAULT.toBuilder().classTypeReMapping(Map.of(Parent.class, Child1.class)).build();
-        var _jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config);
+    	JsonSchemaConfig config = JsonSchemaConfig.DEFAULT.toBuilder().classTypeReMapping(Stream.of(
+        		  new AbstractMap.SimpleImmutableEntry<>(Parent.class, Child1.class))
+        		  .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))).build();
+        JsonSchemaGenerator _jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config);
         
         preventingPolymorphismWithClassTypeRemapping_rootClass_doTest(testData.child1, Parent.class, _jsonSchemaGenerator);
     }
     void preventingPolymorphismWithClassTypeRemapping_rootClass_doTest(Object pojo, Class<?> clazz, JsonSchemaGenerator g) {
-      var jsonNode = assertToFromJson(g, pojo);
-      var schema = generateAndValidateSchema(g, clazz, jsonNode);
+      JsonNode jsonNode = assertToFromJson(g, pojo);
+      JsonNode schema = generateAndValidateSchema(g, clazz, jsonNode);
 
       assertTrue (!schema.at("/additionalProperties").asBoolean());
       assertEquals (schema.at("/properties/parentString/type").asText(), "string");
@@ -1226,10 +1236,12 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void preventingPolymorphismWithClassTypeRemapping_arrays() {
-        var config = JsonSchemaConfig.DEFAULT.toBuilder().classTypeReMapping(Map.of(Parent.class, Child1.class)).build();
-        var _jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config);
+        JsonSchemaConfig config = JsonSchemaConfig.DEFAULT.toBuilder().classTypeReMapping(Stream.of(
+      		  new AbstractMap.SimpleImmutableEntry<>(Parent.class, Child1.class))
+      		  .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))).build();
+        JsonSchemaGenerator _jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config);
         
-        var c = new Child1();
+        Child1 c = new Child1();
         c.parentString = "pv";
         c.child1String = "cs";
         c.child1String2 = "cs2";
@@ -1239,26 +1251,28 @@ public class JsonSchemaGeneratorTest {
         _classNotExtendingAnything.someString = "Something";
         _classNotExtendingAnything.myEnum = MyEnum.C;
 
-        var _pojoWithArrays = new PojoWithArrays(
+        PojoWithArrays _pojoWithArrays = new PojoWithArrays(
             new int[] {1,2,3},
             new String[] {"a1","a2","a3"},
-            List.of("l1", "l2", "l3"),
-            List.of(c, c),
+            Collections.unmodifiableList( Arrays.asList("l1", "l2", "l3") ),
+            Collections.unmodifiableList( Arrays.asList(c, c) ),
             new Parent[] {c, c},
-            List.of(_classNotExtendingAnything, _classNotExtendingAnything),
+            Collections.unmodifiableList( Arrays.asList(_classNotExtendingAnything, _classNotExtendingAnything) ),
             Arrays.asList(Arrays.asList("1","2"), Arrays.asList("3")),
-            Set.of(MyEnum.B)
+            Collections.unmodifiableSet( Stream.of(MyEnum.B).collect(Collectors.toSet()) )
         );
 
         preventingPolymorphismWithClassTypeRemapping_arrays_doTest(_pojoWithArrays, _pojoWithArrays.getClass(), _jsonSchemaGenerator, false);
     }
     
     void preventingPolymorphismWithClassTypeRemapping_arrays_doTest(Object pojo, Class<?> clazz, JsonSchemaGenerator g, boolean html5Checks) {
-        var config = JsonSchemaConfig.DEFAULT.toBuilder().classTypeReMapping(Map.of(Parent.class, Child1.class)).build();
-        var _jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config);
+    	JsonSchemaConfig config = JsonSchemaConfig.DEFAULT.toBuilder().classTypeReMapping(Stream.of(
+      		  new AbstractMap.SimpleImmutableEntry<>(Parent.class, Child1.class))
+      		  .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))).build();
+        JsonSchemaGenerator _jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config);
         
-        var jsonNode = assertToFromJson(g, pojo);
-        var schema = generateAndValidateSchema(g, clazz, jsonNode);
+        JsonNode jsonNode = assertToFromJson(g, pojo);
+        JsonNode schema = generateAndValidateSchema(g, clazz, jsonNode);
 
         assertEquals (schema.at("/properties/intArray1/type").asText(), "array");
         assertEquals (schema.at("/properties/intArray1/items/type").asText(), "integer");
@@ -1292,25 +1306,25 @@ public class JsonSchemaGeneratorTest {
     }
 
     @Test void draft06() {
-        var jsg = jsonSchemaGenerator_draft_06;
-        var jsonNode = assertToFromJson(jsg, testData.classNotExtendingAnything);
-        var schema = generateAndValidateSchema(jsg, testData.classNotExtendingAnything.getClass(), jsonNode, JsonSchemaDraft.DRAFT_06);
+    	JsonSchemaGenerator jsg = jsonSchemaGenerator_draft_06;
+        JsonNode jsonNode = assertToFromJson(jsg, testData.classNotExtendingAnything);
+        JsonNode schema = generateAndValidateSchema(jsg, testData.classNotExtendingAnything.getClass(), jsonNode, JsonSchemaDraft.DRAFT_06);
 
         // Currently there are no differences in the generated jsonSchema other than the $schema-url
       }
 
     @Test void draft07() {
-        var jsg = jsonSchemaGenerator_draft_07;
-        var jsonNode = assertToFromJson(jsg, testData.classNotExtendingAnything);
-        var schema = generateAndValidateSchema(jsg, testData.classNotExtendingAnything.getClass(), jsonNode, JsonSchemaDraft.DRAFT_07);
+    	JsonSchemaGenerator jsg = jsonSchemaGenerator_draft_07;
+        JsonNode jsonNode = assertToFromJson(jsg, testData.classNotExtendingAnything);
+        JsonNode schema = generateAndValidateSchema(jsg, testData.classNotExtendingAnything.getClass(), jsonNode, JsonSchemaDraft.DRAFT_07);
 
         // Currently there are no differences in the generated jsonSchema other than the $schema-url
     }
 
     @Test void draft201909() {
-        var jsg = jsonSchemaGenerator_draft_2019_09;
-        var jsonNode = assertToFromJson(jsg, testData.classNotExtendingAnything);
-        var schema = generateAndValidateSchema(jsg, testData.classNotExtendingAnything.getClass(), jsonNode, JsonSchemaDraft.DRAFT_2019_09);
+    	JsonSchemaGenerator jsg = jsonSchemaGenerator_draft_2019_09;
+        JsonNode jsonNode = assertToFromJson(jsg, testData.classNotExtendingAnything);
+        JsonNode schema = generateAndValidateSchema(jsg, testData.classNotExtendingAnything.getClass(), jsonNode, JsonSchemaDraft.DRAFT_2019_09);
 
         // Currently there are no differences in the generated jsonSchema other than the $schema-url
     }

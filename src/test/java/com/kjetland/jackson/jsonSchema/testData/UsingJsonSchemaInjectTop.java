@@ -2,6 +2,8 @@ package com.kjetland.jackson.jsonSchema.testData;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaBool;
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaInject;
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaInt;
@@ -75,8 +77,8 @@ public class UsingJsonSchemaInjectTop {
         ObjectMapper _objectMapper = new ObjectMapper();
 
         @Override public JsonNode get() {
-            var schema = _objectMapper.createObjectNode();
-            var values = schema.putObject("items").putArray("enum");
+            ObjectNode schema = _objectMapper.createObjectNode();
+            ArrayNode values = schema.putObject("items").putArray("enum");
             values.add("foo");
             values.add("bar");
 
@@ -90,8 +92,8 @@ public class UsingJsonSchemaInjectTop {
         ObjectMapper _objectMapper = new ObjectMapper();
 
         @Override public JsonNode get() {
-            var schema = _objectMapper.createObjectNode();
-            var values = schema.putObject("items").putArray("enum");
+            ObjectNode schema = _objectMapper.createObjectNode();
+            ArrayNode values = schema.putObject("items").putArray("enum");
             values.add("foo_"+custom);
             values.add("bar_"+custom);
 
