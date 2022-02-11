@@ -1,5 +1,6 @@
 package com.kjetland.jackson.jsonSchema.testData;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.validation.constraints.NotNull;
 
 public class ManyPrimitives {
@@ -12,6 +13,7 @@ public class ManyPrimitives {
     @NotNull
     public Boolean _booleanObjectWithNotNull;
     public Double _doubleObject;
+    @JsonProperty(required = true)
     public double _doublePrimitive;
     public MyEnum myEnum;
 

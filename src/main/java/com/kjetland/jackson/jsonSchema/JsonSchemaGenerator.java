@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
 import com.fasterxml.jackson.databind.introspect.AnnotatedClassResolver;
+import com.fasterxml.jackson.databind.introspect.AnnotationMap;
 import com.fasterxml.jackson.databind.jsontype.TypeSerializer;
 import com.fasterxml.jackson.databind.node.*;
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaBool;
@@ -154,12 +155,38 @@ public class JsonSchemaGenerator {
             return null;
         return ann;
     }
-    
+
     // Checks to see if a javax.validation field that makes our field required is present.
     boolean validationAnnotationRequired(BeanProperty prop) {
         return selectAnnotation(prop, NotNull.class) != null
                 || selectAnnotation(prop, NotBlank.class) != null
                 || selectAnnotation(prop, NotEmpty.class) != null;
+    }
+    
+    // Checks to see if a javax.validation field that makes our field nullable.
+    public boolean hasNullableAnnotation(BeanProperty prop)  {
+        AnnotationMap annotations = prop.getMember().getAllAnnotations();
+        for (Annotation annotation : annotations.annotations()) {
+            String annotationType = annotation.annotationType().getSimpleName();
+            if (annotationType .equals ("Nullable"))
+                return true;
+        }
+        return false;
+    }
+
+    // Checks to see if a javax.validation field that makes our field not null.
+    public boolean hasNotNullAnnotation(BeanProperty prop)  {
+    	AnnotationMap annotations = prop.getMember().getAllAnnotations();
+        for (Annotation annotation : annotations.annotations()) {
+            String annotationType = annotation.annotationType().getSimpleName();
+            if (annotationType .equals ("NonNull")
+                    || annotationType .equals ("Nonnull")
+                    || annotationType .equals ("NotNull")
+                    || selectAnnotation(prop, NotBlank.class) != null
+                    || selectAnnotation(prop, NotEmpty.class) != null)
+                return true;
+        }
+        return false;
     }
 
     /** Verifies that the annotation is applicable based on the config.javaxValidationGroups. */

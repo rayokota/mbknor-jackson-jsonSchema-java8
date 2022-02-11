@@ -137,7 +137,6 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
             pattern += ".*$";
             node.put("pattern", pattern);
         }
-
         String defaultValue = extractDefaultValue();
         if (defaultValue != null)
             node.put("default", defaultValue);
@@ -656,7 +655,6 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 //                record PropertyNode(ObjectNode main, ObjectNode meta) {}
                 @Data @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true) @Accessors(fluent = true)
                 class PropertyNode { final ObjectNode main; final ObjectNode meta; }
-
                 // Check if we should set this property as required. Primitive types MUST have a value, as does anything
                 // with a @JsonProperty that has "required" set to true. Lastly, various javax.validation annotations also
                 // make this required.
@@ -664,6 +662,11 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 
                 boolean optionalType = Optional.class.isAssignableFrom(propertyType.getRawClass())
                         || propertyType.getRawClass().getName().equals("scala.Option");
+
+                boolean nullable = optionalType ||
+                    !propertyType.getRawClass().isPrimitive() &&
+                        (ctx.hasNullableAnnotation(prop) 
+                            || ctx.config.nullableByDefault && !ctx.hasNotNullAnnotation(prop));
 
                 PropertyNode thisPropertyNode;
                 {
@@ -676,7 +679,7 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
                     }
 
                     if (!requiredProperty && ((ctx.config.useOneOfForOption && optionalType) ||
-                      (ctx.config.useOneOfForNullables && !optionalType))) {
+                            (ctx.config.useOneOfForNullables && !optionalType))) {
                         // We support this type being null, insert a oneOf consisting of a sentinel "null" and the real type.
                         ArrayNode oneOfArray = JsonNodeFactory.instance.arrayNode();
                         node.set("oneOf", oneOfArray);
@@ -784,6 +787,12 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
 //                    ObjectNode optionsNode = Utils.getOrCreateObjectChild(thisPropertyNode.meta, "options");
 //                    optionsNode.put(_.name(), _.value());
 //                }
+
+                JsonSchemaAdditional additionalAnn = prop.getAnnotation(JsonSchemaAdditional.class);
+                if (additionalAnn != null) {
+                    ObjectNode optionsNode = Utils.getOrCreateObjectChild(thisPropertyNode.meta, "options");
+                    optionsNode.put("additional", true);
+                }
 
                 // Optionally add JsonSchemaInject
                 JsonSchemaInject injectAnn = ctx.selectAnnotation(prop, JsonSchemaInject.class);

@@ -65,10 +65,12 @@ public final class JsonSchemaConfig {
             = JsonSchemaConfig.builder()
                     .useOneOfForOption(true)
                     .useOneOfForNullables(true)
+                    .nullableByDefault(true)
                     .build();
     
     @Default boolean autoGenerateTitleForProperties = false;
     @Default String defaultArrayFormat = null;
+    @Default boolean nullableByDefault = false;
     @Default boolean useOneOfForOption = false;
     @Default boolean useOneOfForNullables = false;
     @Default boolean usePropertyOrdering = false;

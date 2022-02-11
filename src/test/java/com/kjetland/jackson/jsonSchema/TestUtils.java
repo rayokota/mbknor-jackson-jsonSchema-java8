@@ -130,11 +130,11 @@ public final class TestUtils {
         return schema;
     }
     
-    void assertJsonSubTypesInfo(JsonNode node, String typeParamName, String typeName) {
-        assertJsonSubTypesInfo(node, typeParamName, typeName, false);
+    void assertJsonSubTypesInfo(JsonNode node, String typeParamName, String typeName, String typeTitle) {
+        assertJsonSubTypesInfo(node, typeParamName, typeName, typeTitle, false);
     }
     
-    void assertJsonSubTypesInfo(JsonNode node, String typeParamName, String typeName, boolean html5Checks) {
+    void assertJsonSubTypesInfo(JsonNode node, String typeParamName, String typeName, String typeTitle, boolean html5Checks) {
         /*
         "properties" : {
           "type" : {

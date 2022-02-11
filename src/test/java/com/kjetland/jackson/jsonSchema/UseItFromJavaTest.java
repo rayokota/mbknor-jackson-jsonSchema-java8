@@ -31,6 +31,7 @@ public class UseItFromJavaTest {
         JsonSchemaConfig config = JsonSchemaConfig.builder()
                 .autoGenerateTitleForProperties(true)
                 .defaultArrayFormat("A")
+                .nullableByDefault(false)
                 .useOneOfForOption(false)
                 .useOneOfForNullables(true)
                 .usePropertyOrdering(true)
