@@ -161,9 +161,9 @@ Using Maven
 Add this to you pom.xml:
 
     <dependency>
-        <groupId>net.almson</groupId>
-        <artifactId>mbknor-jackson-jsonschema-java</artifactId>
-        <version>1.0.39.2</version>
+        <groupId>one.duckling</groupId>
+        <artifactId>mbknor-jackson-jsonschema-java8</artifactId>
+        <version>1.0.39.1</version>
     </dependency>
 
 
