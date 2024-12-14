@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class SubclassesResolver {
 
+    private ClassGraph classGraph;
     private ScanResult scanResult;
     
     public SubclassesResolver() {
@@ -22,17 +23,24 @@ public class SubclassesResolver {
         if (classGraph == null) {
             log.debug("Entire classpath will be scanned because SubclassesResolver is not configured. See "
                     + "https://github.com/mbknor/mbknor-jackson-jsonSchema#subclass-resolving-using-reflection");
-            classGraph = new ClassGraph();
+            this.classGraph = new ClassGraph();
+        } else {
+            this.classGraph = classGraph;
         }
+    }
 
-        scanResult = classGraph.enableClassInfo().scan();
+    public ScanResult getScanResult() {
+        if (scanResult == null) {
+            scanResult = classGraph.enableClassInfo().scan();
+        }
+        return scanResult;
     }
 
     public List<Class<?>> getSubclasses(Class<?> clazz) {
         if (clazz.isInterface())
-            return scanResult.getClassesImplementing(clazz.getName()).loadClasses();
+            return getScanResult().getClassesImplementing(clazz.getName()).loadClasses();
         else
-            return scanResult.getSubclasses(clazz.getName()).loadClasses();
+            return getScanResult().getSubclasses(clazz.getName()).loadClasses();
     }
     
     static private ClassGraph buildClassGraph(List<String> packagesToScan, List<String> classesToScan) {
