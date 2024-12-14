@@ -9,7 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 public class SubclassesResolver {
 
     private ClassGraph classGraph;
-    private ScanResult scanResult;
+    private volatile ScanResult scanResult = null;
     
     public SubclassesResolver() {
         this(null);
@@ -31,7 +31,11 @@ public class SubclassesResolver {
 
     public ScanResult getScanResult() {
         if (scanResult == null) {
-            scanResult = classGraph.enableClassInfo().scan();
+            synchronized (this) {
+                if (scanResult == null) {
+                    scanResult = classGraph.enableClassInfo().scan();
+                }
+            }
         }
         return scanResult;
     }
