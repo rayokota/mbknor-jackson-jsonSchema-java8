@@ -663,11 +663,6 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
                 boolean optionalType = Optional.class.isAssignableFrom(propertyType.getRawClass())
                         || propertyType.getRawClass().getName().equals("scala.Option");
 
-                boolean nullable = optionalType ||
-                    !propertyType.getRawClass().isPrimitive() &&
-                        (ctx.hasNullableAnnotation(prop) 
-                            || ctx.config.nullableByDefault && !ctx.hasNotNullAnnotation(prop));
-
                 PropertyNode thisPropertyNode;
                 {
                     ObjectNode node = JsonNodeFactory.instance.objectNode();
